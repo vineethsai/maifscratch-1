@@ -123,6 +123,7 @@ class MAIFEncoder:
         "embeddings": BlockType.EMBEDDING.value,
         "video_data": BlockType.VIDEO_DATA.value,  # Add mapping for "video_data" block type
         "audio_data": BlockType.AUDIO_DATA.value,  # Add mapping for "audio_data" block type
+        "audio": BlockType.AUDIO_DATA.value,  # Add mapping for "audio" block type
         "image_data": BlockType.IMAGE_DATA.value,  # Add mapping for "image_data" block type
         "image": BlockType.IMAGE_DATA.value,  # Add mapping for "image" block type
         "cross_modal": BlockType.CROSS_MODAL.value,

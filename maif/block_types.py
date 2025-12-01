@@ -18,7 +18,7 @@ class BlockType(Enum):
     SECURITY = "SECU"
     BINARY_DATA = "BDAT"
     VIDEO_DATA = "VDAT"
-    AUDIO_DATA = "ADAT"
+    AUDIO_DATA = "AUDI"
     IMAGE_DATA = "IDAT"
     CROSS_MODAL = "XMOD"
     SEMANTIC_BINDING = "SBND"

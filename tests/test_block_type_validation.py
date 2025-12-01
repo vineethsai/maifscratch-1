@@ -75,7 +75,7 @@ class TestBlockTypeMapping:
             "embedding": "EMBD",
             "embeddings": "EMBD",
             "video_data": "VDAT",
-            "audio_data": "ADAT",
+            "audio_data": "AUDI",
             "image_data": "IDAT",
             "cross_modal": "XMOD",
             "semantic_binding": "SBND",
