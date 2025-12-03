@@ -5,9 +5,7 @@ pydantic>=2.0.0       # For data validation
 structlog>=23.0.0     # For structured logging
 tenacity>=8.0.0       # For retry logic
 
-# AWS dependencies
-boto3>=1.26.0         # For AWS services integration
-botocore>=1.29.0      # For AWS low-level interface
+# AWS dependencies removed - core MAIF works without AWS
 
 # Optional dependencies for enhanced functionality
 sentence-transformers>=2.2.0  # For semantic embeddings

@@ -42,11 +42,7 @@ from .integration_enhanced import EnhancedMAIFProcessor, ConversionResult
 # Agent Framework
 from .agentic_framework import MAIFAgent, PerceptionSystem, ReasoningSystem, ExecutionSystem
 
-# AWS Integrations
-from .aws_decorators import (
-    maif_agent, aws_agent, aws_bedrock, aws_kms, aws_s3,
-    aws_dynamodb, aws_lambda, aws_step_functions
-)
+# AWS Integrations removed - core library now AWS-independent
 # AWS integrations - imported conditionally to avoid errors when AWS is not needed
 try:
     from .aws_lambda_integration import AWSLambdaIntegration
@@ -64,10 +60,9 @@ from .rate_limiter import RateLimiter, RateLimitConfig, CostBasedRateLimiter, ra
 from .metrics_aggregator import MetricsAggregator, MAIFMetrics, initialize_metrics, get_metrics
 from .cost_tracker import CostTracker, Budget, BudgetExceededException, initialize_cost_tracking, get_cost_tracker, with_cost_tracking
 from .batch_processor import BatchProcessor, StreamBatchProcessor, DistributedBatchProcessor, batch_process
-from .api_gateway_integration import APIGatewayIntegration, APIGatewayHandler, api_endpoint
+# API Gateway integration removed (was AWS-dependent)
 
 # Advanced Features
-from .bedrock_swarm import BedrockAgentSwarm, BedrockModelProvider
 # from .multi_agent import MAIFAgentConsortium  # Disabled due to import issues
 
 # Import simple API for easy access

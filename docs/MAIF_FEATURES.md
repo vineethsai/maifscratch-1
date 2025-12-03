@@ -459,9 +459,10 @@ for block in decoder.blocks:
 ```
 
 ### Examples
-- `examples/basic_usage.py`: Basic operations
-- `examples/versioning_demo.py`: Version management
-- `examples/advanced_features_demo.py`: All features
+- `examples/basic/basic_usage.py`: Basic operations
+- `examples/advanced/versioning_demo.py`: Version management
+- `examples/advanced/advanced_features_demo.py`: All features
+- `examples/langgraph/`: Multi-agent RAG system (featured)
 
 ## Support & Documentation
 

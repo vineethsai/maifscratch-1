@@ -1,12 +1,15 @@
 # MAIF (Multimodal Artifact File Format)
 
+Cryptographically-secure, auditable file format for AI agent data with provenance tracking.
+
 ## Overview
 
-MAIF is a container format and SDK for AI agent data persistence. It provides cryptographically-secure, auditable data structures for multi-agent AI systems, designed to support compliance with security standards such as FIPS 140-2 and DISA STIG.
-
-[![Implementation Status](https://img.shields.io/badge/Status-Active-green.svg)](https://github.com/vineethsai/maifscratch-1)
-[![Security Model](https://img.shields.io/badge/Security-FIPS%20140--2%20Compliant-red.svg)](#security-features)
-[![AWS Integration](https://img.shields.io/badge/AWS-KMS%20%26%20CloudWatch-yellow.svg)](#aws-integration)
+MAIF provides:
+- **Cryptographic provenance** - Hash-chained blocks for tamper-evident audit trails
+- **Multi-agent support** - Shared artifacts with agent-specific logging
+- **Multimodal storage** - Text, embeddings, images, video, knowledge graphs
+- **Security** - FIPS 140-2 compliant encryption, AWS KMS integration
+- **Performance** - Memory-mapped I/O, streaming, compression
 
 ## Technical Architecture
 
@@ -51,265 +54,129 @@ pip install -e ".[aws]"
 pip install -e ".[full]"
 ```
 
+## Installation
+
+```bash
+# Basic installation
+pip install -e .
+
+# With optional features
+pip install -e ".[full]"  # All features
+pip install -e ".[ml]"    # Machine learning features
+pip install -e ".[dev]"   # Development tools
+```
+
 ## Quick Start
 
-### Basic File Operations
+### Basic Usage
 
 ```python
-from maif.core import MAIFEncoder, MAIFDecoder
-from maif.block_types import BlockType
+from maif_api import create_maif, load_maif
 
-# Create MAIF file
-encoder = MAIFEncoder()
-encoder.add_block(
-    block_type=BlockType.TEXT,
-    data=b"Agent conversation data",
-    metadata={"agent_id": "agent-001", "timestamp": 1234567890}
-)
-encoder.save("agent_data.maif")
+# Create artifact with cryptographic provenance
+maif = create_maif("my_agent")
+maif.add_text("Agent conversation data", title="Session 1")
+maif.save("agent_memory.maif")
 
-# Read MAIF file
-decoder = MAIFDecoder("agent_data.maif")
-for block in decoder.read_blocks():
-    print(f"Type: {block.block_type}, Size: {len(block.data)}")
+# Load and verify integrity
+loaded = load_maif("agent_memory.maif")
+assert loaded.verify_integrity()  # Cryptographic hash chain verification
 ```
 
-### Security Configuration
+### Multi-Agent RAG System (Featured Example)
 
-```python
-from maif.security import SecurityManager
+Complete production-ready system with LangGraph orchestration and MAIF provenance:
 
-# Initialize with KMS
-security = SecurityManager(
-    use_kms=True,
-    kms_key_id="arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
-    region_name="us-east-1",
-    require_encryption=True  # Fail if encryption unavailable
-)
+```bash
+cd examples/langgraph
 
-# Encrypt data
-encrypted = security.encrypt_data(b"sensitive data")
+# Setup
+echo "GEMINI_API_KEY=your_key" > .env
+pip install -r requirements_enhanced.txt
 
-# Decrypt data
-decrypted = security.decrypt_data(encrypted)
+# Create knowledge base with embeddings
+python3 create_kb_enhanced.py
+
+# Run interactive demo
+python3 demo_enhanced.py
 ```
 
-### Compliance Logging
+Features: ChromaDB vector search, Gemini API, LLM fact-checking, cryptographic audit trails, multi-turn conversations.
 
-```python
-from maif.compliance_logging import EnhancedComplianceLogger, ComplianceLevel, ComplianceFramework
-from maif.compliance_logging import AuditEventType
+See `examples/langgraph/README.md` for complete documentation.
 
-# Configure compliance logger
-logger = EnhancedComplianceLogger(
-    compliance_level=ComplianceLevel.FIPS_140_2,
-    frameworks=[ComplianceFramework.FISMA, ComplianceFramework.DISA_STIG],
-    siem_config={
-        'provider': 'cloudwatch',
-        'log_group': '/aws/maif/compliance',
-        'region': 'us-east-1'
-    }
-)
+## Examples
 
-# Log security event
-event = logger.log_event(
-    event_type=AuditEventType.DATA_ACCESS,
-    action="read_classified_data",
-    user_id="analyst-001",
-    resource_id="doc-456",
-    classification="SECRET",
-    success=True
-)
+### LangGraph Multi-Agent RAG System
+Production-ready multi-agent system with cryptographic provenance:
+```bash
+cd examples/langgraph
+python3 create_kb_enhanced.py  # Create knowledge base
+python3 demo_enhanced.py       # Run interactive demo
 ```
+
+See `examples/langgraph/README.md` for details.
+
+### Basic Examples
+- `examples/basic/` - Simple usage patterns
+- `examples/security/` - Privacy and encryption
+- `examples/aws/` - AWS integration
+- `examples/advanced/` - Multi-agent, lifecycle management
 
 ## Core Features
 
-### Security & Compliance
+- **Cryptographic Provenance** - Hash-chained blocks, tamper-evident
+- **Multi-Agent Support** - Shared artifacts, agent-specific logging
+- **Multimodal** - Text, embeddings, images, video, knowledge graphs
+- **Security** - FIPS 140-2 encryption, AWS KMS, digital signatures
+- **Performance** - Memory-mapped I/O, streaming, compression
+- **Compliance** - Audit trails, SIEM integration, regulatory support
 
-- **FIPS 140-2 Compliant**: Uses FIPS-approved cryptographic algorithms.
-- **AWS KMS Integration**: Key management via AWS KMS.
-- **Digital Signatures**: RSA/ECDSA with provenance chains.
-- **Access Control**: Permissions with expiry.
-- **Audit Trails**: Operation history with SIEM integration.
+## Project Structure
 
-### AI Algorithms
-
-- **ACAM**: Adaptive Cross-Modal Attention.
-- **HSC**: Hierarchical Semantic Compression.
-- **CSB**: Cryptographic Semantic Binding.
-
-### Architecture Features
-
-- **Multimodal Support**: Text, embeddings, images, video, knowledge graphs.
-- **Streaming Architecture**: Memory-mapped access with progressive loading.
-- **Block-Level Versioning**: Append-only architecture with version tracking.
-- **Self-Describing Format**: Metadata for interpretation.
-
-## Advanced Usage
-
-### Semantic Operations
-
-```python
-from maif.semantic_optimized import HierarchicalSemanticCompression, AdaptiveCrossModalAttention
-
-# Semantic compression
-hsc = HierarchicalSemanticCompression(compression_levels=3)
-compressed = hsc.compress_embeddings(embeddings)
-print(f"Compression ratio: {compressed.compression_ratio:.2f}x")
-
-# Cross-modal attention
-acam = AdaptiveCrossModalAttention(
-    modalities=['text', 'image', 'audio'],
-    attention_heads=8
-)
-attended = acam.forward(multimodal_data)
+```
+maifscratch-1/
+├── maif/                  # Core library (80 files)
+├── maif_sdk/             # High-level SDK
+├── examples/
+│   ├── langgraph/        # Multi-agent RAG system ⭐
+│   ├── basic/            # Simple examples
+│   ├── aws/              # AWS integrations
+│   ├── security/         # Privacy & encryption
+│   └── advanced/         # Multi-agent, lifecycle
+├── tests/                # Test suite
+├── docs/                 # Documentation
+└── benchmarks/           # Performance tests
 ```
 
-### Block Storage
+## Use Cases
 
-```python
-from maif.block_storage import BlockStorage, BlockType
+- **Multi-Agent Systems** - Shared memory with provenance (see `examples/langgraph/`)
+- **RAG Systems** - Document storage with embeddings and search
+- **Compliance** - Audit trails for regulated industries
+- **Research** - Reproducible experiments with full provenance
+- **Enterprise AI** - Secure, auditable AI workflows
 
-# Create block storage
-storage = BlockStorage("data.maif", enable_mmap=True)
+## Documentation
 
-# Add blocks with versioning
-block_id = storage.add_block(
-    block_type=BlockType.EMBEDDINGS,
-    data=embeddings_data,
-    metadata={"model": "text-embedding-ada-002"}
-)
+- **Main Docs**: `docs/README.md`
+- **API Reference**: `docs/api/`
+- **User Guides**: `docs/guide/`
+- **Examples**: See `examples/` directories
 
-# Query blocks
-blocks = storage.query_blocks(
-    block_type=BlockType.EMBEDDINGS,
-    metadata_filter=lambda m: m.get("model") == "text-embedding-ada-002"
-)
-```
+## Key Features
 
-## Agentic Framework
+### Cryptographic Provenance
+Every block linked via `previous_hash` - any tampering breaks the chain
 
-MAIF includes a framework for building autonomous AI agents, with optional AWS integration.
+### Multi-Agent Coordination
+Shared artifacts enable agent collaboration with full audit trails
 
-### Core Agent Architecture
-
-```python
-from maif.agentic_framework import MAIFAgent
-
-# Create an autonomous agent
-agent = MAIFAgent(
-    agent_id="medical-assistant-001",
-    workspace_path="/data/agents/medical",
-    use_aws=True,
-    config={
-        "memory_size": 10000,
-        "learning_rate": 0.1
-    }
-)
-
-await agent.initialize()
-```
-
-### Multi-Agent Orchestration
-
-Coordinate multiple agents:
-
-```python
-from maif.agentic_framework import MultiAgentOrchestrator
-
-# Create orchestrator
-orchestrator = MultiAgentOrchestrator(agent)
-
-# Define multi-agent task
-task = {
-    'id': 'diagnosis-001',
-    'description': 'Collaborative medical diagnosis',
-    'requirements': ['medical-knowledge', 'diagnostic-skills'],
-    'priority': 10,
-    'strategy': 'consensus'
-}
-
-# Execute
-result = await orchestrator.execute_multi_agent_task(task)
-```
-
-### AWS Bedrock Swarm Integration
-
-When AWS is enabled, the framework can leverage Bedrock:
-
-```python
-from maif.bedrock_swarm import BedrockAgentSwarm
-
-swarm = BedrockAgentSwarm(
-    max_agents=10,
-    enable_consensus=True,
-    enable_security=True,
-    enable_compliance_logging=True
-)
-
-# Execute task across multiple Bedrock models
-result = swarm.execute_task(
-    task="Analyze patient data for treatment options",
-    strategy="consensus",
-    agents=["Claude", "Titan", "AI21"]
-)
-```
-
-## AWS Integration
-
-### Credential Management
-
-MAIF uses a centralized credential system:
-
-```python
-from maif.aws_config import configure_aws
-
-# Configure globally
-configure_aws(
-    environment="production",
-    profile="my-aws-profile",
-    region="us-east-1"
-)
-```
-
-Once configured, services like `BedrockClient`, `S3Client`, `DynamoDBClient`, and `KMSClient` automatically use these credentials.
-
-### S3 Integration
-
-```python
-from maif.aws_s3_integration import S3Client
-
-s3_client = S3Client()
-
-# Upload MAIF file
-s3_client.upload_file(
-    local_path="agent_data.maif",
-    bucket="my-bucket",
-    key="data/agent_data.maif"
-)
-```
-
-## Security Considerations
-
-1. **Encryption**: Data encrypted using FIPS-approved algorithms.
-2. **Key Management**: AWS KMS integration.
-3. **Access Control**: IAM-based permissions.
-4. **Audit Trail**: Operations logged with cryptographic integrity.
-5. **Data Classification**: Support for classification levels.
-
-## Compliance
-
-- **FIPS 140-2**: Uses FIPS-approved algorithms.
-- **DISA STIG**: Implements security controls and audit logging.
-- **FISMA**: Supports control families and compliance reporting.
-
-## Limitations
-
-1. **Performance**: Semantic search achieves ~30ms.
-2. **Compression**: Maximum compression ratio of 64×.
-3. **Streaming**: Limited to sequential access patterns.
-4. **Scalability**: Single-file format.
-5. **Block Size**: Maximum block size of 2GB.
+### Production Ready
+- Thread-safe operations
+- Error handling and fallbacks
+- AWS integration (optional)
+- Comprehensive test suite
 
 ## Contributing
 

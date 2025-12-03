@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Data files
+data/sessions/*.maif
+data/sessions/*.json
+data/kb/*.maif
+data/kb/*.json
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/chroma_db/
+
+# But keep directory structure
+!data/sessions/.gitkeep
+!data/kb/.gitkeep
+
+# Environment
+.env
+
+# OS
+.DS_Store
+

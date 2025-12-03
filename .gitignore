@@ -1,15 +1,4 @@
-# Dependencies
-node_modules/
-docs/node_modules/
-
-# VitePress cache and build files
-docs/.vitepress/cache/
-docs/.vitepress/dist/
-
 # Python
-*.maif
-*.blocks
-*.wal
 __pycache__/
 *.py[cod]
 *$py.class
@@ -30,16 +19,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # Virtual environments
-.env
-.venv
-env/
 venv/
 ENV/
-env.bak/
-venv.bak/
+env/
 
 # IDE
 .vscode/
@@ -47,88 +31,60 @@ venv.bak/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+test_results/
+test_workspace/
+workspace/
+
+# MAIF artifacts (generated)
+*.maif
+*_manifest.json
+examples/**/*.maif
+examples/**/*_manifest.json
+examples/**/data/sessions/
+examples/**/data/kb/*.maif
+examples/**/data/kb/*.json
+
+# But keep example manifests for documentation
+!examples/**/sample_manifest.json
+!examples/**/quick_*_manifest.json
+
+# LangGraph
+examples/langgraph/data/sessions/
+examples/langgraph/data/chroma_db/
+examples/langgraph/data/*.db
+examples/langgraph/data/*.db-shm
+examples/langgraph/data/*.db-wal
+
+# Environment
+.env
+.env.local
 
 # Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env.test
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-public
-
-# Storybook build outputs
-.out
-.storybook-out
-
-# Temporary folders
-tmp/
-temp/
-
-# MAIF specific
-*.maif
+# Benchmarks
 benchmark_results/
-*.db
-*.sqlite 
+*.benchmark
+
+# AWS
+.aws/
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+
+
+# LangGraph data files
+examples/langgraph/data/checkpoints*.db*
+examples/langgraph/data/chroma_db/*.sqlite3
+examples/langgraph/data/chroma_db/**/data_level0.bin
+examples/langgraph/examples/langgraph/data/
+

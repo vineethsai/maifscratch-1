@@ -131,8 +131,8 @@ Commitment = Hash(embedding || source_data || nonce)
 - [`large_data_crypto_benchmark.py`](large_data_crypto_benchmark.py): Cryptographic performance
 
 **Example Implementations**:
-- [`privacy_demo.py`](examples/privacy_demo.py): Privacy-preserving AI
-- [`video_demo.py`](examples/video_demo.py): Video processing with semantic analysis
+- [`privacy_demo.py`](../examples/security/privacy_demo.py): Privacy-preserving AI
+- [`video_demo.py`](../examples/advanced/video_demo.py): Video processing with semantic analysis
 
 ### **Validation Methodology**
 

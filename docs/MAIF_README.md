@@ -231,7 +231,7 @@ pip install -e .[dev]
 pytest tests/
 
 # Run example
-python examples/basic_usage.py
+python examples/basic/basic_usage.py
 ```
 
 ## License

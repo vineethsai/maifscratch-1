@@ -62,8 +62,6 @@ setup(
     ],
     extras_require={
         "full": [
-            "boto3>=1.26.0",
-            "botocore>=1.29.0",
             "sentence-transformers>=2.2.0",
             "faiss-cpu>=1.7.0",
             "opencv-python>=4.5.0",
@@ -83,18 +81,6 @@ setup(
             "lz4>=4.0.0",
             "numba>=0.56.0",
             "prometheus-client>=0.16.0",
-        ],
-        "production": [
-            "boto3>=1.26.0",
-            "botocore>=1.29.0",
-            "prometheus-client>=0.16.0",
-            "aiofiles>=0.8.0",
-            "jsonschema>=4.0.0",
-            "psutil>=5.8.0",
-        ],
-        "aws": [
-            "boto3>=1.26.0",
-            "botocore>=1.29.0",
         ],
         "dev": [
             "pytest>=6.0.0",
@@ -121,7 +107,6 @@ setup(
             "maif-verify=maif.cli:verify_maif",
             "maif-analyze=maif.cli:analyze_maif",
             "maif-extract=maif.cli:extract_content",
-            "maif-deploy=maif.aws_deployment:deploy_cli",
         ],
     },
     include_package_data=True,

@@ -23,15 +23,10 @@ import uuid
 import os
 import base64
 
-# Import KMS integration
-try:
-    from .aws_kms_integration import KMSKeyStore, KMSSignatureVerifier, create_kms_verifier
-    KMS_AVAILABLE = True
-except ImportError:
-    KMS_AVAILABLE = False
-    logger.warning("AWS KMS integration not available. Security features will be limited.")
-
 logger = logging.getLogger(__name__)
+
+# AWS KMS integration removed - using local cryptography only
+KMS_AVAILABLE = False
 
 @dataclass
 class ProvenanceEntry:

@@ -1,0 +1,19 @@
+# LangGraph + MAIF Research Assistant Dependencies
+
+# LangGraph core
+langgraph>=0.2.0
+langgraph-checkpoint-sqlite>=1.0.0
+langchain-core>=0.3.0
+
+# LLM providers
+google-generativeai>=0.3.0
+
+# Vector database (choose one or install multiple)
+chromadb>=0.4.0
+# qdrant-client>=1.7.0
+# weaviate-client>=3.25.0
+
+# Utilities
+python-dotenv>=1.0.0
+rich>=13.0.0  # For beautiful console output
+
