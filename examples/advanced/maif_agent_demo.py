@@ -8,7 +8,7 @@ import json
 import time
 from pathlib import Path
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -28,9 +28,7 @@ from maif.agentic_framework import (
     MemorySystem
 )
 
-from maif_sdk.artifact import Artifact as MAIFArtifact
-from maif_sdk.client import MAIFClient
-from maif_sdk.types import SecurityLevel
+from maif_api import create_maif, MAIF as MAIFArtifact
 
 # Specialized Agent Types
 class ResearchAgent(MAIFAgent):

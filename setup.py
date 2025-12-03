@@ -31,7 +31,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/maif-ai/maif",
-    packages=find_packages(include=["maif", "maif.*", "maif_sdk", "maif_sdk.*"]),
+    packages=find_packages(include=["maif", "maif.*"]),
     py_modules=["maif_api"],  # Include the simple API module
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -112,7 +112,6 @@ setup(
     include_package_data=True,
     package_data={
         "maif": ["*.json", "*.yaml", "schemas/*.json", "templates/*.yaml"],
-        "maif_sdk": ["*.json", "*.yaml"],
     },
     keywords="ai, multimodal, security, provenance, forensics, trustworthy-ai, file-format, compression, streaming, aws, cloud, production",
     project_urls={

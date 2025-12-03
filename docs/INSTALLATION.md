@@ -4,22 +4,22 @@ This guide covers installing and using the MAIF (Multimodal Artifact File Format
 
 ## Installation
 
-### Basic Installation
+MAIF is currently distributed as source code. PyPI package coming soon.
 
-Install MAIF with basic functionality:
+### From Source (Current Method)
 
-```bash
-pip install maif
-```
-
-This installs the core library with minimal dependencies for basic MAIF operations.
-
-### Full Installation (Recommended)
-
-Install MAIF with all features enabled:
+Clone and install from the GitHub repository:
 
 ```bash
-pip install maif[full]
+# Clone the repository
+git clone https://github.com/vineethsai/maifscratch-1.git
+cd maifscratch-1
+
+# Basic installation
+pip install -e .
+
+# Full installation with all features (recommended)
+pip install -e ".[full]"
 ```
 
 This includes all optional dependencies for:
@@ -35,22 +35,13 @@ Install only the features you need:
 
 ```bash
 # For machine learning features
-pip install maif[ml]
+pip install -e ".[ml]"
 
-# For CLI tools
-pip install maif[cli]
-
-# For compression features
-pip install maif[compression]
-
-# For computer vision
-pip install maif[vision]
-
-# For development
-pip install maif[dev]
+# For development tools
+pip install -e ".[dev]"
 
 # Multiple feature sets
-pip install maif[ml,cli,compression]
+pip install -e ".[ml,dev]"
 ```
 
 ### Development Installation
@@ -156,7 +147,12 @@ maif-extract --file artifact.maif --output-dir extracted/
 - ✅ Basic integrity verification
 - ✅ Simple API access
 
-### ML Features (`pip install maif[ml]`)
+### ML Features
+
+Install ML dependencies separately if needed:
+```bash
+pip install sentence-transformers faiss-cpu
+```
 
 - 🧠 Semantic embeddings with sentence-transformers
 - 🔍 Fast similarity search with FAISS
@@ -164,28 +160,36 @@ maif-extract --file artifact.maif --output-dir extracted/
 - 📊 Hierarchical semantic compression (HSC)
 - 🔐 Cryptographic semantic binding (CSB)
 
-### Vision Features (`pip install maif[vision]`)
+### Vision Features
+
+Install vision dependencies separately if needed:
+```bash
+pip install opencv-python pillow
+```
 
 - 🖼️ Image processing with OpenCV
 - 📷 Automatic metadata extraction
 - 🎬 Video content handling
 - 🖼️ Image format support (JPEG, PNG, etc.)
 
-### CLI Features (`pip install maif[cli]`)
+### Compression Features
 
-- 💻 Command-line tools
-- 📊 Progress bars and status updates
-- 🔧 Batch processing capabilities
-- 📋 Detailed analysis reports
-
-### Compression Features (`pip install maif[compression]`)
+Install compression dependencies separately if needed:
+```bash
+pip install brotli zstandard
+```
 
 - 🗜️ Advanced compression algorithms (Brotli, Zstandard)
 - 📈 Optimal compression selection
 - 💾 Space-efficient storage
 - ⚡ Fast decompression
 
-### Performance Features (`pip install maif[performance]`)
+### Performance Features
+
+Install performance dependencies separately if needed:
+```bash
+pip install xxhash msgpack psutil
+```
 
 - ⚡ Fast hashing with xxHash
 - 📦 Efficient serialization with MessagePack
@@ -269,22 +273,17 @@ results = loaded_archive.search("machine learning", top_k=5)
 
 **Import Error: No module named 'sentence_transformers'**
 ```bash
-pip install maif[ml]
+pip install sentence-transformers
 ```
 
 **Import Error: No module named 'cv2'**
 ```bash
-pip install maif[vision]
-```
-
-**Command not found: maif**
-```bash
-pip install maif[cli]
+pip install opencv-python
 ```
 
 **Performance Issues with Large Files**
 ```bash
-pip install maif[performance]
+pip install xxhash msgpack psutil
 ```
 
 ### Dependency Conflicts
@@ -296,8 +295,8 @@ If you encounter dependency conflicts:
 python -m venv maif_env
 source maif_env/bin/activate  # On Windows: maif_env\Scripts\activate
 
-# Install MAIF
-pip install maif[full]
+# Install MAIF from source
+pip install -e .
 ```
 
 ### Memory Issues

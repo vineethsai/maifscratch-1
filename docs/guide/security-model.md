@@ -1,679 +1,422 @@
 # Security Model
 
-MAIF implements a comprehensive security model based on defense-in-depth principles, zero-trust architecture, and cryptographic best practices. This guide explains how security is implemented at every layer of the system.
+MAIF implements security at multiple levels: cryptographic signatures, encryption, access control, and provenance tracking. This guide explains the security features available in the current implementation.
 
 ## Security Architecture Overview
 
-MAIF's security model operates on multiple layers, each providing specific protections:
+MAIF's security model provides:
+
+- **Digital Signatures**: Ed25519-based signing for data integrity
+- **Encryption**: AES-GCM and ChaCha20-Poly1305 encryption
+- **Access Control**: Block-level permission management
+- **Provenance**: Immutable audit trail of all operations
+- **Integrity Verification**: Hash-based integrity checks
 
 ```mermaid
 graph TB
     subgraph "MAIF Security Layers"
-        L1[Application Security Layer]
-        L2[Transport Security Layer]
-        L3[Data Security Layer]
-        L4[Cryptographic Layer]
-        L5[Infrastructure Security Layer]
+        L1[Data Layer]
+        L2[Cryptographic Layer]
+        L3[Access Control Layer]
+        L4[Provenance Layer]
         
         L1 --> L2
         L2 --> L3
         L3 --> L4
-        L4 --> L5
         
-        L1 --> A1[Authentication]
-        L1 --> A2[Authorization]
-        L1 --> A3[Input Validation]
-        L1 --> A4[Session Management]
+        L2 --> C1[AES-GCM Encryption]
+        L2 --> C2[ChaCha20-Poly1305]
+        L2 --> C3[Ed25519 Signatures]
         
-        L2 --> T1[TLS 1.3]
-        L2 --> T2[Certificate Pinning]
-        L2 --> T3[Perfect Forward Secrecy]
-        L2 --> T4[HSTS]
+        L3 --> A1[Block Permissions]
+        L3 --> A2[Access Rules]
         
-        L3 --> D1[Encryption at Rest]
-        L3 --> D2[Digital Signatures]
-        L3 --> D3[Access Control]
-        L3 --> D4[Data Integrity]
-        
-        L4 --> C1[AES-GCM]
-        L4 --> C2[ChaCha20-Poly1305]
-        L4 --> C3[Ed25519]
-        L4 --> C4[PBKDF2]
-        
-        L5 --> I1[Secure Boot]
-        L5 --> I2[Hardware Security]
-        L5 --> I3[Network Security]
-        L5 --> I4[System Hardening]
+        L4 --> P1[Provenance Chain]
+        L4 --> P2[Audit Trail]
     end
-    
-    style L1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style L3 fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style L4 fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
 ```
 
-## Cryptographic Foundation
+## Digital Signatures
 
-### Encryption Algorithms
+### MAIFSigner
 
-MAIF supports multiple modern, authenticated encryption algorithms. You can configure the desired security level and algorithm when creating a client.
+The `MAIFSigner` class provides digital signature capabilities:
 
 ```python
-from maif_sdk import create_client
-from maif.security import SecurityLevel, EncryptionAlgorithm
+from maif.security import MAIFSigner, MAIFVerifier
 
-# Configure a client with a top-secret security level, using AES-GCM encryption
-# with a high number of key derivation rounds for added security.
-client = create_client(
-    "secure-agent",
-    security_level=SecurityLevel.TOP_SECRET,
-    encryption_algorithm=EncryptionAlgorithm.AES_GCM,
-    key_derivation_rounds=100000 # Increases resistance to brute-force attacks.
+# Create a signer for your agent
+signer = MAIFSigner(agent_id="my-agent")
+
+# Sign data
+data = b"Important content that needs verification"
+signature = signer.sign_data(data)
+print(f"Signature: {signature[:40]}...")
+
+# Get public key for sharing
+public_key = signer.get_public_key_pem()
+print(f"Public key available for verification")
+```
+
+### MAIFVerifier
+
+Verify signatures using the `MAIFVerifier`:
+
+```python
+from maif.security import MAIFVerifier
+
+verifier = MAIFVerifier()
+
+# Verify a signature
+data = b"Important content that needs verification"
+is_valid = verifier.verify_signature(data, signature, public_key)
+print(f"Signature valid: {is_valid}")
+
+# Verify MAIF manifest
+manifest_valid = verifier.verify_maif_manifest(manifest_data, public_key)
+
+# Verify provenance chain
+chain_valid = verifier.verify_provenance_chain(provenance_entries)
+```
+
+### Provenance Tracking
+
+Track all operations with cryptographic provenance:
+
+```python
+from maif.security import MAIFSigner
+
+signer = MAIFSigner(agent_id="provenance-demo")
+
+# Add provenance entries for operations
+signer.add_provenance_entry("create", "block-001")
+signer.add_provenance_entry("update", "block-001")
+signer.add_provenance_entry("access", "block-001")
+
+# Each entry is cryptographically linked to previous entries
+```
+
+## Encryption
+
+### Privacy Engine Encryption
+
+The `PrivacyEngine` handles encryption:
+
+```python
+from maif.privacy import PrivacyEngine, EncryptionMode
+
+# Create privacy engine
+privacy = PrivacyEngine()
+
+# Encrypt data with AES-GCM (default)
+encrypted = privacy.encrypt_data(
+    b"Sensitive information",
+    mode=EncryptionMode.AES_GCM
+)
+
+# Decrypt data
+decrypted = privacy.decrypt_data(encrypted, mode=EncryptionMode.AES_GCM)
+
+# ChaCha20-Poly1305 (alternative)
+encrypted_chacha = privacy.encrypt_data(
+    b"More sensitive data",
+    mode=EncryptionMode.CHACHA20_POLY1305
 )
 ```
 
-**Supported Algorithms:**
-- **AES-GCM**: Fast, hardware-accelerated, authenticated encryption
-- **ChaCha20-Poly1305**: Software-optimized, constant-time implementation
-- **XChaCha20-Poly1305**: Extended nonce version for high-volume scenarios
+### Encryption in MAIF Files
 
-### Digital Signatures
-
-All data blocks can be digitally signed to ensure their integrity and authenticity. You can enable automatic signing at the client level or apply signatures manually.
+When creating MAIF files with encryption:
 
 ```python
-from maif_sdk import create_client, create_artifact
+from maif_api import create_maif
 
-# Configure a client to automatically sign all data blocks using the Ed25519 algorithm.
-client = create_client(
-    "signed-agent",
-    enable_signing=True,
-    signature_algorithm="Ed25519"
+# Enable privacy for encryption support
+maif = create_maif("secure-agent", enable_privacy=True)
+
+# Add encrypted content
+maif.add_text(
+    "Confidential: This data is encrypted",
+    title="Secret Document",
+    encrypt=True
 )
 
-# You can also sign individual blocks manually for more granular control.
-artifact = create_artifact("manual-signing-demo", client=client)
-artifact.add_text(
-    "Important document that requires a signature.",
-    sign=True,
-    signature_algorithm="Ed25519"
-)
+maif.save("encrypted.maif")
 ```
 
-**Supported Signature Algorithms:**
-- **Ed25519**: Fast, secure, small signatures
-- **RSA-PSS**: Industry standard, configurable key sizes
-- **ECDSA**: Elliptic curve signatures
-
-### Key Management
-
-MAIF implements secure key management with options for derivation, storage, and rotation, including support for Hardware Security Modules (HSMs).
+### Using MAIFEncoder with Privacy
 
 ```python
-from maif_sdk import create_client
-from maif.security import KeyManager, KeyStorage
+from maif.core import MAIFEncoder
+from maif.privacy import PrivacyEngine, PrivacyLevel, EncryptionMode
 
-# Configure a key manager to use the Argon2 algorithm for key derivation,
-# store keys in an HSM, and automatically rotate them every 30 days.
-key_manager = KeyManager(
-    derivation_algorithm="Argon2",
-    derivation_rounds=100000,
-    storage_backend=KeyStorage.HSM, # For enterprise-grade security.
-    rotation_policy="30_days"
+# Create privacy engine
+privacy_engine = PrivacyEngine()
+
+# Create encoder with privacy
+encoder = MAIFEncoder(
+    agent_id="secure-encoder",
+    enable_privacy=True,
+    privacy_engine=privacy_engine
 )
 
-# Create a client that uses this robust key management configuration.
-client = create_client(
-    "enterprise-agent",
-    key_manager=key_manager
+# Add encrypted block
+encoder.add_text_block(
+    "Top secret information",
+    privacy_level=PrivacyLevel.TOP_SECRET,
+    encryption_mode=EncryptionMode.AES_GCM,
+    metadata={"classification": "top_secret"}
 )
+
+encoder.save("secure_artifact.maif")
 ```
 
 ## Access Control
 
-MAIF implements fine-grained access control with support for multiple models, including Role-Based and Attribute-Based Access Control.
+### AccessControlManager
 
-### Role-Based Access Control (RBAC)
-
-Define roles with specific permissions and assign users to those roles to manage access to artifacts.
+Manage permissions at the block level:
 
 ```python
-from maif.security import AccessController, Role, Permission
-from maif_sdk import create_artifact
+from maif.security import AccessControlManager
 
-# Assume an artifact is already created.
-artifact = create_artifact("rbac-demo")
+# Create access control manager
+acm = AccessControlManager()
 
-# Define roles with a specific set of permissions.
-admin_role = Role("admin", [
-    Permission.READ,
-    Permission.WRITE,
-    Permission.DELETE,
-    Permission.ADMIN # Permission to manage access control itself.
-])
-user_role = Role("user", [
-    Permission.READ,
-    Permission.WRITE
-])
-
-# Configure an access controller with the RBAC model and the defined roles.
-access_controller = AccessController(
-    model="RBAC",
-    roles=[admin_role, user_role]
-)
-
-# Apply the access control policy to the artifact, assigning users to roles.
-artifact.set_access_control(
-    controller=access_controller,
-    assignments={
-        "admin": ["alice", "bob"],
-        "user": ["charlie", "diana"]
-    }
-)
-```
-
-### Attribute-Based Access Control (ABAC)
-
-Define complex, attribute-based rules to govern access based on user, resource, and environmental conditions.
-
-```python
-from maif.security import AccessController
-
-# This ABAC policy allows access only if the user is in the finance department,
-# the resource is confidential, and the access time is within business hours.
-abac_policy = {
-    "rules": [
-        {
-            "effect": "allow",
-            "conditions": {
-                "user.department": "finance",
-                "resource.classification": "confidential",
-                "environment.time": "business_hours"
-            }
-        }
-    ]
-}
-
-# Configure the access controller to use the ABAC model with the defined policy.
-access_controller = AccessController(
-    model="ABAC",
-    policy=abac_policy
-)
-```
-
-### Block-Level Permissions
-
-Apply fine-grained permissions directly to individual data blocks within an artifact for maximum control.
-
-```python
-from maif_sdk import create_artifact
-
-# Mock artifact and block_id for demonstration.
-artifact = create_artifact("block-level-permission-demo")
-block_id = artifact.add_text("A highly sensitive data block.")
-
-# Set specific read and write permissions for a single block.
-# Access can be controlled by user, role, and dynamic conditions.
-artifact.set_block_permissions(block_id, {
-    "read": {
-        "users": ["alice", "bob"],
-        "roles": ["analyst"],
-        "conditions": {
-            "time_range": "09:00-17:00", # Condition: only during business hours
-            "location": "office_network" # Condition: only from the office network
-        }
-    },
-    "write": {
-        "users": ["admin"],
-        "require_mfa": True # Condition: require multi-factor authentication for writes.
-    }
-})
-```
-
-## Audit and Compliance
-
-### Comprehensive Audit Logging
-
-MAIF maintains detailed, immutable audit logs for all operations, providing a complete history for security analysis and compliance.
-
-```python
-from maif_sdk import create_client, create_artifact
-
-# Configure a client to enable detailed, immutable audit logging.
-client = create_client(
-    "audited-agent",
-    enable_audit_trail=True,
-    audit_level="DETAILED", # Log all operation details.
-    audit_storage="immutable" # Use tamper-proof storage for logs.
-)
-artifact = create_artifact("audited-artifact", client=client)
-
-# Query the audit logs for a specific time range and filter by operation type.
-audit_logs = artifact.get_audit_trail(
-    start_time="2024-01-01T00:00:00Z",
-    end_time="2024-01-31T23:59:59Z",
-    filters={"operation": "WRITE"}
-)
-
-# Process and review the audit logs.
-for log_entry in audit_logs:
-    print(f"[{log_entry.timestamp}] User '{log_entry.user}' performed '{log_entry.operation}' on block '{log_entry.block_id}'")
-```
-
-### Audit Log Structure
-
-```python
-class AuditLogEntry:
-    timestamp: datetime
-    user_id: str
-    session_id: str
-    operation: str
-    resource_id: str
-    resource_type: str
-    result: str  # SUCCESS, FAILURE, DENIED
-    ip_address: str
-    user_agent: str
-    additional_context: dict
-    signature: bytes  # Cryptographic signature
-```
-
-### Compliance Features
-
-MAIF supports multiple compliance frameworks:
-
-```python
-# Configure for GDPR compliance
-client = create_client(
-    "gdpr-compliant-agent",
-    compliance_framework="GDPR",
-    data_retention_policy="7_years",
-    right_to_be_forgotten=True,
-    consent_management=True
-)
-
-# HIPAA compliance
-client = create_client(
-    "hipaa-compliant-agent",
-    compliance_framework="HIPAA",
-    encryption_required=True,
-    audit_level="MAXIMUM",
-    access_logging=True
-)
-```
-
-## Threat Protection
-
-### Input Validation and Sanitization
-
-```python
-from maif.security import InputValidator
-
-# Configure input validation
-validator = InputValidator(
-    max_text_length=10000,
-    allowed_file_types=["txt", "pdf", "docx"],
-    scan_for_malware=True,
-    detect_injection_attacks=True
-)
-
-# Validate input
-validated_text = validator.validate_text(user_input)
-validated_file = validator.validate_file(uploaded_file)
-```
-
-### Injection Attack Prevention
-
-```python
-# SQL injection prevention (for structured data)
-safe_query = artifact.search_structured_data(
-    query=user_query,
-    sanitize=True,
-    escape_special_chars=True
-)
-
-# Code injection prevention
-safe_code = validator.sanitize_code(
-    user_code,
-    allowed_functions=["print", "len", "str"],
-    block_imports=True
-)
-```
-
-### Rate Limiting and DoS Protection
-
-```python
-# Configure rate limiting
-client = create_client(
-    "protected-agent",
-    rate_limit_per_minute=100,
-    rate_limit_per_hour=1000,
-    ddos_protection=True,
-    connection_throttling=True
-)
-```
-
-## Security Monitoring
-
-### Real-time Security Monitoring
-
-```python
-from maif.security import SecurityMonitor
-
-# Configure security monitoring
-monitor = SecurityMonitor(
-    enable_anomaly_detection=True,
-    alert_on_suspicious_activity=True,
-    integration="SIEM"
-)
-
-# Set up alerts
-monitor.add_alert_rule({
-    "condition": "failed_login_attempts > 5",
-    "action": "block_user",
-    "notification": "security_team@company.com"
+# Set block permissions
+acm.set_block_permissions("block-001", {
+    "read": ["user_a", "user_b"],
+    "write": ["user_a"],
+    "delete": ["admin"]
 })
 
-monitor.add_alert_rule({
-    "condition": "unusual_data_access_pattern",
-    "action": "require_mfa",
-    "notification": "admin@company.com"
-})
+# Check if user has permission
+can_read = acm.check_permission("user_b", "block-001", "read")
+print(f"User B can read: {can_read}")
+
+can_write = acm.check_permission("user_b", "block-001", "write")
+print(f"User B can write: {can_write}")
+
+# Get permissions manifest
+manifest = acm.get_permissions_manifest()
 ```
 
-### Security Metrics
+### Access Rules in PrivacyEngine
 
 ```python
-# Get security metrics
-security_metrics = client.get_security_metrics()
+from maif.privacy import PrivacyEngine, AccessRule
+from datetime import datetime, timedelta
 
-print(f"Failed authentication attempts: {security_metrics.failed_auth_attempts}")
-print(f"Blocked IPs: {security_metrics.blocked_ips}")
-print(f"Suspicious activities detected: {security_metrics.suspicious_activities}")
-print(f"Data integrity violations: {security_metrics.integrity_violations}")
+privacy = PrivacyEngine()
+
+# Add access rule
+rule = AccessRule(
+    subject="user_a",
+    resource="block-001",
+    permissions=["read", "write"],
+    conditions={"department": "engineering"},
+    expiry=datetime.now() + timedelta(days=30)
+)
+privacy.add_access_rule(rule)
+
+# Check access
+can_access = privacy.check_access("user_a", "block-001", "read")
 ```
 
-## Incident Response
+## Privacy Levels
 
-### Automated Response
+MAIF supports multiple privacy levels:
 
 ```python
-from maif.security import IncidentResponse
+from maif.privacy import PrivacyLevel
 
-# Configure incident response
-incident_response = IncidentResponse(
-    auto_block_suspicious_users=True,
-    auto_rotate_compromised_keys=True,
-    emergency_contacts=["security@company.com"],
-    escalation_policy="immediate"
-)
-
-# Manual incident handling
-incident = incident_response.create_incident(
-    type="data_breach",
-    severity="high",
-    description="Unauthorized access detected"
-)
-
-# Forensic data collection
-forensic_data = incident_response.collect_forensic_data(
-    incident_id=incident.id,
-    time_range="last_24_hours"
-)
+# Available privacy levels
+PrivacyLevel.PUBLIC        # No restrictions
+PrivacyLevel.INTERNAL      # Internal use only
+PrivacyLevel.CONFIDENTIAL  # Confidential, requires authorization
+PrivacyLevel.SECRET        # Secret, restricted access
+PrivacyLevel.TOP_SECRET    # Highest classification
 ```
 
-### Security Incident Types
+### Using Privacy Levels
 
-1. **Unauthorized Access**: Failed authentication, privilege escalation
-2. **Data Breach**: Unauthorized data access or exfiltration
-3. **Integrity Violation**: Data tampering, signature verification failure
-4. **Availability Attack**: DoS, resource exhaustion
-5. **Malware Detection**: Virus, trojan, or suspicious code
+```python
+from maif.core import MAIFEncoder
+from maif.privacy import PrivacyEngine, PrivacyLevel, EncryptionMode
+
+privacy = PrivacyEngine()
+encoder = MAIFEncoder(
+    agent_id="classified-demo",
+    enable_privacy=True,
+    privacy_engine=privacy
+)
+
+# Public content
+encoder.add_text_block(
+    "This is public information",
+    privacy_level=PrivacyLevel.PUBLIC
+)
+
+# Confidential content with encryption
+encoder.add_text_block(
+    "This is confidential information",
+    privacy_level=PrivacyLevel.CONFIDENTIAL,
+    encryption_mode=EncryptionMode.AES_GCM
+)
+
+# Top secret content
+encoder.add_text_block(
+    "This is top secret information",
+    privacy_level=PrivacyLevel.TOP_SECRET,
+    encryption_mode=EncryptionMode.AES_GCM
+)
+
+encoder.save("classified.maif")
+```
+
+## Data Anonymization
+
+The privacy engine can anonymize sensitive data:
+
+```python
+from maif.privacy import PrivacyEngine
+
+privacy = PrivacyEngine()
+
+# Anonymize text containing PII
+text = "Contact John Smith at john@email.com or 555-123-4567"
+anonymized = privacy.anonymize_data(text)
+print(f"Anonymized: {anonymized}")
+# Output might be: "Contact [NAME] at [EMAIL] or [PHONE]"
+```
+
+### Anonymization in MAIF Files
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("anon-agent", enable_privacy=True)
+
+# Add with anonymization
+maif.add_text(
+    "Patient John Doe, SSN: 123-45-6789, visited on 2024-01-15",
+    title="Medical Record",
+    anonymize=True  # PII will be masked
+)
+
+maif.save("anonymized.maif")
+```
+
+## Integrity Verification
+
+### Verify MAIF File Integrity
+
+```python
+from maif_api import load_maif
+
+maif = load_maif("my_artifact.maif")
+
+# Verify file hasn't been tampered with
+if maif.verify_integrity():
+    print("✓ File integrity verified")
+else:
+    print("✗ File may be corrupted or tampered")
+```
+
+### Hash Verification in Decoder
+
+```python
+from maif.core import MAIFDecoder
+
+decoder = MAIFDecoder("artifact.maif")
+
+# Each block has a hash for integrity
+for block in decoder.read_blocks():
+    # Block hash is automatically verified during read
+    print(f"Block {block.block_id}: hash verified")
+```
 
 ## Security Best Practices
 
-### 1. Defense in Depth
+### 1. Always Verify Integrity
 
 ```python
-# Implement multiple security layers
-client = create_client(
-    "hardened-agent",
-    # Authentication
-    require_mfa=True,
-    session_timeout=3600,
-    
-    # Authorization
-    access_control="RBAC",
-    principle_of_least_privilege=True,
-    
-    # Encryption
-    encryption_algorithm="XChaCha20-Poly1305",
-    key_rotation_interval="30_days",
-    
-    # Monitoring
-    enable_audit_trail=True,
-    anomaly_detection=True,
-    
-    # Network security
-    ip_whitelist=["10.0.0.0/8"],
-    require_tls=True
-)
+from maif_api import load_maif
+
+def safe_load(filename):
+    """Load MAIF file with integrity verification."""
+    maif = load_maif(filename)
+    if not maif.verify_integrity():
+        raise ValueError(f"Integrity check failed for {filename}")
+    return maif
 ```
 
-### 2. Zero Trust Architecture
+### 2. Use Appropriate Privacy Levels
 
 ```python
-# Never trust, always verify
-artifact.add_text(
-    sensitive_data,
-    encrypt=True,              # Encrypt everything
-    sign=True,                 # Sign everything
-    verify_on_read=True,       # Verify on every access
-    require_fresh_auth=True    # Re-authenticate for sensitive operations
-)
-```
+from maif.privacy import PrivacyLevel
 
-### 3. Secure Development Practices
-
-```python
-# Secure configuration
-client = create_client(
-    "secure-dev-agent",
-    # Disable debug features in production
-    debug_mode=False,
-    verbose_errors=False,
-    
-    # Secure defaults
-    default_encryption=True,
-    default_signing=True,
-    strict_validation=True,
-    
-    # Security headers
-    security_headers={
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block"
+# Match privacy level to data sensitivity
+def get_privacy_level(data_type):
+    levels = {
+        "public": PrivacyLevel.PUBLIC,
+        "internal": PrivacyLevel.INTERNAL,
+        "pii": PrivacyLevel.CONFIDENTIAL,
+        "financial": PrivacyLevel.SECRET,
+        "medical": PrivacyLevel.TOP_SECRET
     }
-)
+    return levels.get(data_type, PrivacyLevel.CONFIDENTIAL)
 ```
 
-## Enterprise Security Features
-
-### Hardware Security Module (HSM) Integration
+### 3. Encrypt Sensitive Data
 
 ```python
-from maif.security import HSMProvider
+from maif_api import create_maif
 
-# Configure HSM
-hsm = HSMProvider(
-    provider="local",  # AWS CloudHSM removed
-    cluster_id="cluster-12345",
-    partition="production"
-)
-
-client = create_client(
-    "hsm-secured-agent",
-    key_storage=hsm,
-    require_hsm_signatures=True
-)
+def store_sensitive_data(content, title, sensitivity="confidential"):
+    """Store sensitive data with appropriate encryption."""
+    maif = create_maif("secure-agent", enable_privacy=True)
+    
+    # Always encrypt sensitive data
+    maif.add_text(
+        content,
+        title=title,
+        encrypt=True,
+        anonymize=(sensitivity == "pii")
+    )
+    
+    return maif
 ```
 
-### Multi-Factor Authentication
+### 4. Track Provenance
 
 ```python
-from maif.security import MFAProvider
+from maif.security import MAIFSigner
 
-# Configure MFA
-mfa = MFAProvider(
-    methods=["TOTP", "SMS", "Hardware_Token"],
-    backup_codes=True,
-    remember_device=False
-)
-
-client = create_client(
-    "mfa-protected-agent",
-    mfa_provider=mfa,
-    require_mfa_for_sensitive_ops=True
-)
+def create_auditable_artifact(agent_id, operations):
+    """Create artifact with full provenance trail."""
+    signer = MAIFSigner(agent_id=agent_id)
+    
+    for operation, target in operations:
+        signer.add_provenance_entry(operation, target)
+    
+    return signer
 ```
 
-### Certificate Management
+## Available Security Components
 
-```python
-from maif.security import CertificateManager
-
-# Configure certificate management
-cert_manager = CertificateManager(
-    ca_provider="Internal_CA",
-    auto_renewal=True,
-    certificate_transparency=True,
-    ocsp_stapling=True
-)
-
-client = create_client(
-    "cert-managed-agent",
-    certificate_manager=cert_manager,
-    require_client_certificates=True
-)
-```
-
-## Security Testing
-
-### Penetration Testing Support
-
-```python
-# Enable security testing mode
-client = create_client(
-    "pentest-agent",
-    security_testing_mode=True,
-    log_all_attempts=True,
-    generate_security_report=True
-)
-
-# Run security tests
-security_report = client.run_security_tests([
-    "authentication_bypass",
-    "authorization_escalation",
-    "injection_attacks",
-    "encryption_weaknesses"
-])
-```
-
-### Vulnerability Scanning
-
-```python
-# Scan for vulnerabilities
-vulnerabilities = client.scan_vulnerabilities([
-    "outdated_dependencies",
-    "weak_configurations",
-    "exposed_secrets",
-    "insecure_permissions"
-])
-
-for vuln in vulnerabilities:
-    print(f"Severity: {vuln.severity}, Type: {vuln.type}, Fix: {vuln.remediation}")
-```
-
-## Compliance Certifications
-
-MAIF is designed to meet various compliance requirements:
-
-- **SOC 2 Type II**: Security, availability, processing integrity
-- **ISO 27001**: Information security management
-- **FedRAMP**: US government cloud security
-- **Common Criteria**: International security evaluation
-- **FIPS 140-2**: Cryptographic module validation
-
-```python
-# Generate compliance report
-compliance_report = client.generate_compliance_report(
-    framework="SOC2",
-    period="2024-Q1",
-    include_evidence=True
-)
-```
-
-## Security Configuration Examples
-
-### High Security Configuration
-
-```python
-client = create_client(
-    "maximum-security-agent",
-    
-    # Cryptography
-    encryption_algorithm="XChaCha20-Poly1305",
-    key_derivation="Argon2",
-    key_derivation_rounds=200000,
-    signature_algorithm="Ed25519",
-    
-    # Access Control
-    access_control="ABAC",
-    require_mfa=True,
-    session_timeout=1800,
-    max_failed_attempts=3,
-    
-    # Monitoring
-    audit_level="MAXIMUM",
-    anomaly_detection=True,
-    real_time_alerts=True,
-    
-    # Network Security
-    require_tls_1_3=True,
-    certificate_pinning=True,
-    ip_whitelist_only=True,
-    
-    # Data Protection
-    data_loss_prevention=True,
-    content_inspection=True,
-    backup_encryption=True
-)
-```
-
-### Compliance-Ready Configuration
-
-```python
-client = create_client(
-    "compliance-ready-agent",
-    
-    # Regulatory compliance
-    compliance_frameworks=["GDPR", "HIPAA", "SOX"],
-    data_retention_policy="7_years",
-    right_to_be_forgotten=True,
-    
-    # Audit requirements
-    immutable_audit_logs=True,
-    log_retention="10_years",
-    third_party_attestation=True,
-    
-    # Privacy requirements
-    privacy_by_design=True,
-    consent_management=True,
-    data_minimization=True
-)
-```
+| Component | Purpose | Import |
+|-----------|---------|--------|
+| `MAIFSigner` | Create digital signatures | `from maif.security import MAIFSigner` |
+| `MAIFVerifier` | Verify signatures | `from maif.security import MAIFVerifier` |
+| `AccessControlManager` | Block-level permissions | `from maif.security import AccessControlManager` |
+| `PrivacyEngine` | Encryption and anonymization | `from maif.privacy import PrivacyEngine` |
+| `PrivacyLevel` | Classification levels | `from maif.privacy import PrivacyLevel` |
+| `EncryptionMode` | Encryption algorithms | `from maif.privacy import EncryptionMode` |
+| `AccessRule` | Access control rules | `from maif.privacy import AccessRule` |
 
 ## Next Steps
 
-- **[Privacy Framework →](/guide/privacy)** - Privacy features and compliance
-- **[Performance →](/guide/performance)** - Security performance optimization
-- **[API Security →](/api/security/)** - Security API reference
-- **[Deployment Security →](/cookbook/security)** - Secure deployment patterns 
+- **[Privacy Framework →](/guide/privacy)** - Deep dive into privacy features
+- **[API Security Reference →](/api/security/)** - Complete security API
+- **[Examples →](/examples/)** - Security examples in practice

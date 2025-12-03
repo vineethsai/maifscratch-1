@@ -23,7 +23,7 @@ from maif.lifecycle_management import (
     MAIFLifecycleState
 )
 from maif.core import MAIFEncoder
-from maif_sdk.client import MAIFClient
+from maif_api import create_maif
 
 def create_sample_maifs(workspace: Path, num_files: int = 3) -> list:
     """Create sample MAIF files for testing."""

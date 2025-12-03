@@ -2,50 +2,47 @@
 layout: home
 
 hero:
-  name: "MAIF Framework"
-  text: "Multi-Agent Intelligence Framework"
-  tagline: "Revolutionary memory framework for AI agents with built-in privacy, semantic understanding, and enterprise-grade security"
-  image:
-    src: /maif-hero.svg
-    alt: MAIF Framework Architecture
+  name: "MAIF"
+  text: "Multimodal Artifact Intelligence Framework"
+  tagline: "Secure, verifiable memory for AI agents with built-in privacy, semantic understanding, and cryptographic provenance"
   actions:
     - theme: brand
       text: Get Started
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/maif-ai/maif
+      link: https://github.com/vineethsai/maifscratch-1
     - theme: alt
       text: API Reference
       link: /api/
 
 features:
   - icon: 🧠
-    title: Artifact-Centric AI
-    details: Revolutionary paradigm where agent behavior is driven by persistent, verifiable data artifacts instead of ephemeral tasks
+    title: Persistent AI Memory
+    details: Store agent memories, conversations, and knowledge in a unified, verifiable file format that persists across sessions
   - icon: 🔒
     title: Privacy-by-Design
-    details: Enterprise-grade encryption (AES-GCM, ChaCha20), differential privacy, and zero-knowledge proofs built into every operation
-  - icon: 🚀
-    title: High Performance
-    details: 400+ MB/s streaming, sub-50ms semantic search, memory-mapped I/O, and SIMD-optimized operations
+    details: AES-GCM and ChaCha20 encryption, PII anonymization, and differential privacy built into every operation
+  - icon: 🔗
+    title: Cryptographic Provenance
+    details: Immutable hash chains and digital signatures ensure complete audit trails and tamper detection
   - icon: 🎯
-    title: Novel AI Algorithms
-    details: ACAM (Cross-Modal Attention), HSC (Semantic Compression), and CSB (Cryptographic Binding) algorithms
-  - icon: 🛡️
-    title: Enterprise Security
-    details: Digital signatures, immutable audit trails, granular access control, and compliance-ready logging
-  - icon: 🌐
+    title: Semantic Understanding
+    details: Built-in embeddings, cross-modal attention (ACAM), and semantic search for intelligent content retrieval
+  - icon: 📦
     title: Multi-modal Native
-    details: Seamless handling of text, images, video, audio, embeddings, and knowledge graphs in a unified format
+    details: Seamlessly handle text, images, video, audio, embeddings, and structured data in a single artifact
+  - icon: ⚡
+    title: High Performance
+    details: Memory-mapped I/O, streaming support, and optimized compression for production workloads
 ---
 
 <style>
 :root {
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #bd34fe 30%, #41d1ff);
+  --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #3c82f6 30%, #10b981);
 
-  --vp-home-hero-image-background-image: linear-gradient(-45deg, #bd34fe 50%, #47caff 50%);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #3c82f6 50%, #10b981 50%);
   --vp-home-hero-image-filter: blur(44px);
 }
 
@@ -62,146 +59,238 @@ features:
 }
 </style>
 
-## 🚀 30 Seconds to Production AI Agent
+## What is MAIF?
 
-Get your first AI agent running with built-in memory, privacy, and semantic understanding:
+**MAIF (Multimodal Artifact Intelligence Framework)** is a file format and SDK for building AI agents with **persistent, verifiable memory**. Unlike traditional AI systems where context is lost between sessions, MAIF artifacts store everything your agent knows in a cryptographically secure, tamper-evident format.
+
+### The Problem with Traditional AI Memory
+
+```
+Traditional AI Agent:
+  Session 1: User asks question → Agent responds → Memory lost
+  Session 2: User returns → Agent has no context → Starts fresh
+  
+  No audit trail, no verification, no accountability
+```
+
+### The MAIF Solution
+
+```
+MAIF-Powered Agent:
+  Session 1: User asks question → Agent responds → Saved to .maif file
+  Session 2: User returns → Agent loads .maif → Full context restored
+  
+  + Every action cryptographically signed
+  + Complete audit trail
+  + Tamper detection built-in
+```
+
+## Quick Start
+
+Get your first MAIF artifact running in 30 seconds:
 
 ```bash
-# Install MAIF
-pip install maif[full]
-
-# Create your first agent
-python -c "
-from maif_sdk import create_client, create_artifact
-
-# Create high-performance client
-client = create_client('my-agent')
-
-# Create artifact with privacy
-artifact = create_artifact('agent-memory', client)
-artifact.add_text('Hello, trustworthy AI world!', encrypt=True)
-artifact.save('agent-memory.maif')
-
-print('✅ Agent memory created with encryption!')
-"
+# Clone and install
+git clone https://github.com/vineethsai/maifscratch-1.git
+cd maifscratch-1
+pip install -e .
 ```
 
-## 🎯 Real-World Impact
+```python
+from maif_api import create_maif, load_maif
 
-<div class="tip custom-block" style="padding-top: 8px">
+# Create an artifact for your agent
+memory = create_maif("my-agent")
 
-**Financial Services**: Privacy-compliant transaction analysis with complete audit trails
-**Healthcare**: HIPAA-compliant patient data processing with differential privacy  
-**Content Moderation**: High-throughput video analysis with semantic understanding
-**Research**: Reproducible experiments with cryptographic provenance chains
+# Add content with automatic integrity protection
+memory.add_text("User prefers detailed explanations", title="Preference")
+memory.add_text("Previous topic was machine learning", title="Context")
 
-</div>
+# Save with cryptographic signing
+memory.save("agent_memory.maif", sign=True)
 
-## 🏗️ Architecture That Scales
+# Later: Load and verify
+loaded = load_maif("agent_memory.maif")
+assert loaded.verify_integrity()  # Tamper detection
 
-MAIF implements a revolutionary **artifact-centric paradigm** where AI agents operate on persistent, verifiable data artifacts instead of ephemeral conversations:
-
-```mermaid
-graph TB
-    subgraph "Traditional AI Agents"
-        TA1[Agent A] --> TM[Ephemeral Memory]
-        TA2[Agent B] --> TM
-        TM --> TL[Lost Context]
-    end
-    
-    subgraph "MAIF Artifact-Centric Agents"
-        MA1[Agent A] --> MAIF[MAIF Artifact]
-        MA2[Agent B] --> MAIF
-        MA3[Agent C] --> MAIF
-        MAIF --> PP[Persistent Memory]
-        MAIF --> AP[Audit Trails]
-        MAIF --> CP[Cryptographic Provenance]
-    end
-    
-    style MAIF fill:#3c82f6,stroke:#1e40af,stroke-width:3px,color:#fff
-    style TL fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    style PP fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style AP fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style CP fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+# Search your agent's memory
+results = memory.search("user preferences")
 ```
 
-## 🔬 Novel AI Algorithms
+**That's it.** Your AI agent now has persistent, verifiable memory.
 
-MAIF implements three cutting-edge algorithms that push the boundaries of AI capabilities:
+## Real-World Use Case: Multi-Agent RAG System
 
-<div class="language-python vp-adaptive-theme">
-<button title="Copy Code" class="copy"></button>
-<span class="lang">python</span>
-<pre class="shiki shiki-themes github-light github-dark vp-code" tabindex="0"><code><span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;"># ACAM: Adaptive Cross-Modal Attention</span></span>
-<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583;">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> maif.semantic_optimized </span><span style="color:#D73A49;--shiki-dark:#F97583;">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> AdaptiveCrossModalAttention</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">acam </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> AdaptiveCrossModalAttention(embedding_dim</span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF;">384</span><span style="color:#24292E;--shiki-dark:#E1E4E8;">)</span></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">attention_weights </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> acam.compute_attention_weights({</span></span>
-<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;">    'text'</span><span style="color:#24292E;--shiki-dark:#E1E4E8;">: text_embeddings,</span></span>
-<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;">    'image'</span><span style="color:#24292E;--shiki-dark:#E1E4E8;">: image_embeddings,</span></span>
-<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;">    'audio'</span><span style="color:#24292E;--shiki-dark:#E1E4E8;">: audio_embeddings</span></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">})</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;"># HSC: Hierarchical Semantic Compression (3-tier)</span></span>
-<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583;">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> maif.semantic_optimized </span><span style="color:#D73A49;--shiki-dark:#F97583;">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> HierarchicalSemanticCompression</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">hsc </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> HierarchicalSemanticCompression(target_compression_ratio</span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#005CC5;--shiki-dark:#79B8FF;">0.4</span><span style="color:#24292E;--shiki-dark:#E1E4E8;">)</span></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">compressed </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> hsc.compress_embeddings(embeddings)  </span><span style="color:#032F62;--shiki-dark:#9ECBFF;"># 60% size, 95% fidelity</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF;"># CSB: Cryptographic Semantic Binding</span></span>
-<span class="line"><span style="color:#D73A49;--shiki-dark:#F97583;">from</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> maif.semantic_optimized </span><span style="color:#D73A49;--shiki-dark:#F97583;">import</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> CryptographicSemanticBinding</span></span>
-<span class="line"></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">csb </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> CryptographicSemanticBinding()</span></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">binding </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> csb.create_semantic_commitment(embedding, source_data)</span></span>
-<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8;">verified </span><span style="color:#D73A49;--shiki-dark:#F97583;">=</span><span style="color:#24292E;--shiki-dark:#E1E4E8;"> csb.verify_semantic_binding(embedding, source_data, binding)</span></span>
-</code></pre>
-</div>
+MAIF powers production AI systems. See our complete example: a research assistant with 5 specialized agents, each action cryptographically logged.
 
-## 📊 Enterprise-Grade Performance
+```bash
+cd examples/langgraph
+pip install -r requirements_enhanced.txt
+python3 demo_enhanced.py
+```
 
-| Metric | MAIF Achievement | Industry Standard |
-|--------|------------------|-------------------|
-| **Streaming Throughput** | 400+ MB/s | ~100 MB/s |
-| **Semantic Search** | <50ms for 1M vectors | 200-500ms |
-| **Memory Efficiency** | Zero-copy operations | Memory copies |
-| **Security Overhead** | <20% impact | 50-100% |
-| **Compression Ratio** | 60% with 95% fidelity | 30-40% |
+**Features:**
+- **5 Agents**: Init, Retrieve, Synthesize, Fact-Check, Citation
+- **Real Vector Search**: ChromaDB with sentence-transformers
+- **LLM Integration**: Gemini API for generation and verification
+- **Complete Audit Trail**: Every query, retrieval, and response logged to MAIF
 
-## 🌟 What Makes MAIF Different?
+[View LangGraph Example →](/examples/langgraph-rag)
 
-<div class="warning custom-block" style="padding-top: 8px">
+## Core Features
 
-**Traditional AI Systems**: Opaque data, no audit trails, ephemeral memory, compliance nightmares
+### 1. Persistent Memory
 
-**MAIF-Powered Systems**: Cryptographic provenance, immutable audit trails, persistent memory, compliance-ready from day one
+```python
+from maif_api import create_maif
 
-</div>
+# Create memory for your agent
+agent_memory = create_maif("support-bot")
 
-### Built for the Future of AI
+# Store conversation context
+agent_memory.add_text("User: How do I reset my password?")
+agent_memory.add_text("Agent: Go to Settings > Security > Reset Password")
 
-- **🏛️ Regulatory Ready**: EU AI Act, GDPR, HIPAA compliance built-in
-- **🔗 Multi-Agent Native**: Universal format for agent collaboration
-- **📈 Research Foundation**: Based on peer-reviewed academic research
-- **⚡ Production Proven**: Battle-tested in high-throughput environments
+# Persist across sessions
+agent_memory.save("support_bot.maif")
+```
 
-## 🚀 Ready to Transform Your AI Architecture?
+### 2. Privacy Protection
+
+```python
+from maif_api import create_maif
+
+# Enable privacy features
+secure_memory = create_maif("hipaa-agent", enable_privacy=True)
+
+# Encrypt sensitive content
+secure_memory.add_text(
+    "Patient John Doe, SSN: 123-45-6789",
+    title="Patient Record",
+    encrypt=True,      # AES-GCM encryption
+    anonymize=True     # Automatic PII removal
+)
+
+# Get privacy report
+report = secure_memory.get_privacy_report()
+```
+
+### 3. Cryptographic Provenance
+
+Every block in a MAIF artifact is cryptographically linked:
+
+```python
+from maif_api import load_maif
+
+# Load and verify
+artifact = load_maif("important_data.maif")
+
+# Check for tampering
+if artifact.verify_integrity():
+    print("✅ Data is authentic and unmodified")
+else:
+    print("❌ Data has been tampered with!")
+```
+
+### 4. Semantic Search
+
+Find relevant content using semantic similarity:
+
+```python
+from maif_api import load_maif
+
+# Load knowledge base
+kb = load_maif("knowledge.maif")
+
+# Semantic search
+results = kb.search("machine learning best practices", top_k=5)
+
+for result in results:
+    print(f"Found: {result['text'][:100]}...")
+```
+
+### 5. Multi-modal Content
+
+Store text, images, video, and embeddings together:
+
+```python
+from maif_api import create_maif
+
+# Create multimodal artifact
+artifact = create_maif("media-agent")
+
+# Add different content types
+artifact.add_text("Product description: High-quality headphones")
+artifact.add_image("product_photo.jpg", title="Product Image")
+artifact.add_multimodal({
+    "text": "Review summary",
+    "rating": 4.5,
+    "features": ["wireless", "noise-cancelling"]
+}, title="Product Review")
+
+artifact.save("product_catalog.maif")
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    MAIF Artifact (.maif)                │
+├─────────────────────────────────────────────────────────┤
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐       │
+│  │ Block 1 │→│ Block 2 │→│ Block 3 │→│ Block n │       │
+│  │  Text   │ │  Image  │ │Embedding│ │Metadata │       │
+│  │ hash_1  │ │ hash_2  │ │ hash_3  │ │ hash_n  │       │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘       │
+│       │           │           │           │             │
+│       └───────────┴───────────┴───────────┘             │
+│                         ↓                               │
+│              Cryptographic Hash Chain                   │
+│                         ↓                               │
+│              Digital Signature (optional)               │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Who Should Use MAIF?
+
+| Use Case | Why MAIF? |
+|----------|-----------|
+| **AI Agent Developers** | Persistent memory that survives restarts |
+| **Enterprise AI** | Audit trails for compliance (GDPR, HIPAA) |
+| **Multi-Agent Systems** | Shared memory with provenance tracking |
+| **Research** | Reproducible experiments with verification |
+| **Healthcare AI** | Privacy-preserving patient data handling |
+| **Financial AI** | Tamper-evident transaction logging |
+
+## Getting Started
 
 <div class="tip custom-block" style="padding-top: 8px">
 
 **Next Steps:**
-1. **[Get Started →](/guide/getting-started)** - 5-minute tutorial
-2. **[View Examples →](https://github.com/vineethsai/maifscratch-1/tree/main/examples)** - Real-world use cases  
-3. **[API Reference →](/api/)** - Complete documentation
-4. **[Join Community →](https://discord.gg/maif)** - Get help and share ideas
+1. **[Installation Guide →](/guide/installation)** - Set up MAIF
+2. **[Quick Start →](/guide/quick-start)** - 5-minute tutorial
+3. **[Examples →](/examples/)** - Real-world use cases
+4. **[API Reference →](/api/)** - Complete documentation
 
 </div>
+
+## Featured Example
+
+The **LangGraph Multi-Agent RAG System** demonstrates MAIF in a production scenario:
+
+- Research assistant with fact-checking
+- 5 specialized agents working together
+- Every action logged to MAIF artifacts
+- Complete audit trail and provenance
+
+[View the LangGraph Example →](/examples/langgraph-rag)
 
 ---
 
 <div style="text-align: center; margin: 2rem 0;">
 
-**MAIF: Where AI Trust Meets Performance**
+**MAIF: Trustworthy Memory for AI Agents**
 
-*Built by researchers, for production*
+*Open source. Production ready. Cryptographically secure.*
 
-</div> 
+</div>

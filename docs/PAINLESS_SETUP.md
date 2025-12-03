@@ -9,68 +9,69 @@
 ## Super Quick Start (3 commands)
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements_novel_algorithms.txt
+# 1. Install MAIF
+pip install -e .
 
-# 2. Test everything works
-python3 test_novel_algorithms.py
+# 2. Test the simple API
+python3 examples/basic/simple_api_demo.py
 
-# 3. See full demo
+# 3. See novel algorithms demo
 python3 examples/advanced/novel_algorithms_demo.py
 ```
 
-## Even Easier (1 command)
+## Even Easier (2 commands)
 
 ```bash
-python3 setup_novel_algorithms.py
+pip install -e .
+python3 -c "from maif_api import create_maif; m = create_maif('test'); m.add_text('Hello'); print('✅ MAIF working!')"
 ```
 
-This will:
-- Install all dependencies
-- Test all algorithms
-- Run the full demo
-- Create usage guides
+This verifies:
+- MAIF core is installed
+- Simple API works
+- You're ready to go
 
 ## What You Get
 
 ### ACAM - Adaptive Cross-Modal Attention
 ```python
-from maif.semantic import CrossModalAttention
-acam = CrossModalAttention()
-weights = acam.compute_attention_weights(embeddings_dict)
+from maif.semantic_optimized import AdaptiveCrossModalAttention
+acam = AdaptiveCrossModalAttention(embedding_dim=384)
+weights = acam.compute_attention_weights(embeddings)
 ```
 
 ### HSC - Hierarchical Semantic Compression  
 ```python
-from maif.semantic import HierarchicalSemanticCompression
-hsc = HierarchicalSemanticCompression()
+from maif.semantic_optimized import HierarchicalSemanticCompression
+hsc = HierarchicalSemanticCompression(compression_levels=3)
 compressed = hsc.compress_embeddings(embedding_list)
 ```
 
 ### CSB - Cryptographic Semantic Binding
 ```python
-from maif.semantic import CryptographicSemanticBinding
+from maif.semantic_optimized import CryptographicSemanticBinding
 csb = CryptographicSemanticBinding()
 binding = csb.create_semantic_commitment(embedding, source_data)
 ```
 
 ### MAIF Integration
 ```python
-from maif import MAIFEncoder
+from maif_api import create_maif
 
-encoder = MAIFEncoder()
-encoder.add_cross_modal_block(multimodal_data)  # Uses ACAM
-encoder.add_compressed_embeddings_block(embeddings, use_hsc=True)  # Uses HSC
-encoder.add_semantic_binding_block(embedding, source_data)  # Uses CSB
-encoder.build_maif("output.maif", "manifest.json")
+# High-level API
+maif = create_maif("my-agent")
+maif.add_text("Hello world")
+maif.add_multimodal({"text": "desc", "type": "image"})
+maif.save("output.maif", sign=True)
 ```
 
 ## Files You Care About
 
-- `test_novel_algorithms.py` - Quick 30-second test
+- `maif_api.py` - Simple high-level API
+- `examples/basic/simple_api_demo.py` - Quick start
 - `examples/advanced/novel_algorithms_demo.py` - Full demonstration
-- `maif/semantic.py` - All algorithm implementations
-- `NOVEL_ALGORITHMS_IMPLEMENTATION.md` - Complete documentation
+- `maif/semantic_optimized.py` - ACAM, HSC, CSB implementations
+- `docs/NOVEL_ALGORITHMS_IMPLEMENTATION.md` - Complete documentation
 
 ## Troubleshooting
 

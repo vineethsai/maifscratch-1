@@ -1,496 +1,538 @@
-# Privacy Engine API Reference
+# Privacy Engine
 
-The `PrivacyEngine` provides enterprise-grade privacy protection including encryption, anonymization, differential privacy, and PII detection with configurable policies.
+The `PrivacyEngine` provides comprehensive privacy-by-design features for MAIF, including encryption, anonymization, access control, and data retention.
 
 ## Overview
-
-Privacy Engine features:
-- **Encryption**: AES-GCM, ChaCha20-Poly1305 with key management
-- **Anonymization**: PII detection and smart replacement strategies
-- **Differential Privacy**: Mathematical privacy guarantees (DP-SGD)
-- **Privacy Policies**: Configurable GDPR/HIPAA compliance frameworks
-- **Audit Trails**: Complete operation logging for compliance
 
 ```mermaid
 graph TB
     subgraph "Privacy Engine"
-        Engine[Privacy Engine]
-        
-        subgraph "Core Features"
-            Encryption[Encryption]
-            Anonymization[PII Detection]
-            DiffPrivacy[Differential Privacy]
-            Policies[Privacy Policies]
-        end
-        
-        subgraph "Compliance"
-            GDPR[GDPR]
-            HIPAA[HIPAA]
-            Audit[Audit Logging]
-        end
+        PE[PrivacyEngine]
+        Enc[Encryption]
+        Anon[Anonymization]
+        Access[Access Control]
+        Retention[Retention]
     end
     
-    Engine --> Encryption
-    Engine --> Anonymization
-    Engine --> DiffPrivacy
-    Engine --> Policies
+    PE --> Enc
+    PE --> Anon
+    PE --> Access
+    PE --> Retention
     
-    Policies --> GDPR
-    Policies --> HIPAA
-    Policies --> Audit
+    subgraph "Encryption Modes"
+        AES[AES-256-GCM]
+        ChaCha[ChaCha20-Poly1305]
+        Homo[Homomorphic]
+    end
     
-    style Engine fill:#3c82f6,stroke:#1e40af,stroke-width:3px,color:#fff
-    style Policies fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    Enc --> AES
+    Enc --> ChaCha
+    Enc --> Homo
 ```
 
 ## Quick Start
 
-This example provides a brief overview of the `PrivacyEngine`'s core capabilities: encrypting data, anonymizing PII, and applying comprehensive privacy policies.
-
 ```python
-from maif import PrivacyEngine, PrivacyPolicy, PrivacyLevel
+from maif.privacy import PrivacyEngine, PrivacyPolicy, PrivacyLevel, EncryptionMode
 
-# Create a default privacy engine.
-privacy = PrivacyEngine()
+# Create engine
+engine = PrivacyEngine()
 
-# Encrypt a piece of sensitive information.
-encrypted = privacy.encrypt("Sensitive information")
-# Decrypt the data to retrieve the original content.
-decrypted = privacy.decrypt(encrypted)
+# Encrypt data
+encrypted, metadata = engine.encrypt_data(b"Sensitive data", "block-123")
 
-# Anonymize a string containing Personally Identifiable Information (PII).
-text = "Contact John Doe at john.doe@email.com or 555-123-4567"
-anonymized = privacy.anonymize(text)
-# The result will be something like: "Contact [PERSON] at [EMAIL] or [PHONE]"
+# Anonymize text
+anonymized = engine.anonymize_data("John Smith lives at 123 Main St", "context-1")
 
-# Define and apply a privacy policy to a piece of data.
-policy = PrivacyPolicy(
-    level=PrivacyLevel.CONFIDENTIAL,
-    encrypt_all=True,
-    anonymize_pii=True
+# Set access rules
+from maif.privacy import AccessRule
+rule = AccessRule(
+    subject="user-1",
+    resource="block-123",
+    permissions=["read"]
 )
-protected = privacy.apply_policy(data, policy)
+engine.add_access_rule(rule)
 ```
 
-## Constructor & Configuration
+## PrivacyEngine
 
-The `PrivacyEngine` constructor allows you to configure its behavior for encryption, anonymization, compliance, and performance.
+The core privacy engine class.
+
+### Constructor
 
 ```python
-privacy = PrivacyEngine(
-    # --- Encryption Settings ---
-    default_algorithm="ChaCha20-Poly1305", # A fast and secure default encryption algorithm.
-    key_derivation_rounds=100000, # Use 100,000 rounds for key derivation to enhance security.
-    
-    # --- Anonymization Settings ---
-    pii_patterns=["email", "phone", "ssn"], # The types of PII to detect by default.
-    replacement_strategy="semantic", # Use semantic placeholders (e.g., [PERSON]) for anonymization.
-    
-    # --- Differential Privacy Settings ---
-    enable_differential_privacy=True, # Enable differential privacy features.
-    epsilon=1.0, # The epsilon value, controlling the privacy/utility trade-off.
-    delta=1e-5, # The delta value, for (epsilon, delta)-differential privacy.
-    
-    # --- Compliance Settings ---
-    compliance_frameworks=["GDPR", "HIPAA"], # Enable helpers and checks for specific regulations.
-    audit_all_operations=True, # Ensure all privacy-related operations are audited.
-    
-    # --- Performance Settings ---
-    parallel_processing=True, # Use multiple threads for performance.
-    cache_encrypted_keys=True # Cache encrypted keys to speed up repeated operations.
-)
+class PrivacyEngine:
+    def __init__(self):
+        """Initialize privacy engine with master key and empty policies."""
 ```
 
-## Core Operations
+### Properties
 
-### Encryption
+| Property | Type | Description |
+|----------|------|-------------|
+| `access_rules` | `List[AccessRule]` | Access control rules |
+| `privacy_policies` | `Dict[str, PrivacyPolicy]` | Block ID to policy mapping |
+| `encryption_keys` | `Dict[str, bytes]` | Block ID to encryption key mapping |
+| `anonymization_maps` | `Dict[str, Dict]` | Context to pseudonym mapping |
+| `retention_policies` | `Dict[str, int]` | Block ID to retention days |
 
-#### `encrypt(data, **options) -> EncryptedData`
+## Encryption
 
-Encrypts a piece of data using the configured or specified algorithm.
+### encrypt_data
+
+Encrypt data with specified mode.
 
 ```python
-# Encrypt a simple string with default settings.
-encrypted = privacy.encrypt("Sensitive data")
+def encrypt_data(
+    self,
+    data: bytes,
+    block_id: str,
+    encryption_mode: EncryptionMode = EncryptionMode.AES_GCM,
+    use_batch_key: bool = True
+) -> Tuple[bytes, Dict[str, Any]]:
+    """
+    Encrypt data.
 
-# Encrypt data with advanced, per-operation options.
-encrypted = privacy.encrypt(
-    data="Highly sensitive information",
-    algorithm="ChaCha20-Poly1305", # Override the default encryption algorithm.
-    key_id="user-key", # Specify a key ID for key management purposes.
-    compress_before_encrypt=True, # Compress the data before encrypting it to save space.
-    audit_reason="data_protection" # Provide a reason for the operation to be stored in the audit log.
-)
+    Args:
+        data: Data to encrypt
+        block_id: Unique block identifier
+        encryption_mode: Encryption algorithm to use
+        use_batch_key: Use shared key for batch operations (faster)
+
+    Returns:
+        Tuple of (encrypted_data, metadata)
+
+    Raises:
+        ValueError: If data is empty or block_id is missing
+    """
 ```
 
-#### `decrypt(encrypted_data, **options) -> bytes`
-
-Decrypts data and verifies its integrity.
+**Example:**
 
 ```python
-# Decrypt the data and verify its integrity.
-decrypted = privacy.decrypt(
-    encrypted_data=encrypted,
-    verify_integrity=True, # Ensure the data has not been tampered with since encryption.
-    secure_memory=True # Use secure memory allocation for the decrypted data.
-)
-```
+engine = PrivacyEngine()
 
-#### `encrypt_field(data, field_path, **options) -> dict`
+# Encrypt with AES-GCM (default)
+encrypted, meta = engine.encrypt_data(b"Secret", "block-1")
+print(f"Algorithm: {meta['algorithm']}")  # AES-GCM
 
-Encrypts a specific field within a nested dictionary.
-
-```python
-# Selectively encrypt fields within a structured data object.
-user_data = {
-    "name": "John Doe",
-    "email": "john@example.com",
-    "ssn": "123-45-6789"
-}
-
-# Encrypt the 'email' and 'ssn' fields, leaving 'name' as plaintext.
-encrypted_data = privacy.encrypt_field(user_data, "email")
-encrypted_data = privacy.encrypt_field(encrypted_data, "ssn")
-```
-
-### Anonymization
-
-#### `anonymize(text, **options) -> str`
-
-Detects and anonymizes PII in a string of text.
-
-```python
-# Anonymize PII in a string using several advanced options.
-text = "Contact Dr. Sarah Johnson at sarah.j@hospital.com"
-anonymized = privacy.anonymize(
-    text=text,
-    pii_types=["person", "email", "phone"], # Specify which PII types to look for.
-    replacement_strategy="semantic", # Use semantic placeholders like [PERSON].
-    preserve_format=True, # Preserve the original format of the redacted data (e.g., xxx-xx-xxxx for SSN).
-    track_replacements=True # Keep a record of the replacements made.
+# Encrypt with ChaCha20
+encrypted, meta = engine.encrypt_data(
+    b"Secret",
+    "block-2",
+    encryption_mode=EncryptionMode.CHACHA20_POLY1305
 )
 ```
 
-#### `detect_pii(text, **options) -> PIIDetectionResult`
+### decrypt_data
 
-Detects PII in a string without anonymizing it, returning detailed information about the findings.
-
-```python
-# Detect PII in a string and get a detailed report.
-pii_result = privacy.detect_pii(
-    text=sensitive_text,
-    pii_types=["person", "email", "phone", "ssn"], # The PII types to detect.
-    confidence_threshold=0.8, # The minimum confidence score for a detection to be reported.
-    custom_patterns={"employee_id": r"EMP\d{6}"} # Add custom regex patterns for detection.
-)
-
-# Iterate through the detected PII.
-for detection in pii_result.detections:
-    print(f"Type: {detection.pii_type}")
-    print(f"Text: {detection.matched_text}")
-    print(f"Confidence: {detection.confidence:.2f}")
-```
-
-#### `k_anonymize(dataset, **options) -> List[dict]`
-
-Applies k-anonymity to a dataset to prevent re-identification of individuals.
+Decrypt previously encrypted data.
 
 ```python
-# Apply k-anonymity to a list of user records, where k=3.
-k_anonymous = privacy.k_anonymize(
-    dataset=user_records,
-    k=3, # The k-anonymity factor. At least 3 records must share the same quasi-identifiers.
-    quasi_identifiers=["age", "zipcode"], # The fields that could be used to re-identify individuals.
-    sensitive_attributes=["condition"], # The sensitive information to be protected.
-    generalization_strategies={ # How to generalize the quasi-identifiers.
-        "age": "age_range", # Generalize age to a range (e.g., 30-40).
-        "zipcode": "zip_prefix" # Generalize zipcode to a prefix (e.g., 902**).
-    }
-)
+def decrypt_data(
+    self,
+    encrypted_data: bytes,
+    block_id: str,
+    metadata: Dict[str, Any] = None
+) -> bytes:
+    """
+    Decrypt data.
+
+    Args:
+        encrypted_data: Encrypted data
+        block_id: Block identifier (must match encryption)
+        metadata: Encryption metadata from encrypt_data
+
+    Returns:
+        Decrypted data
+
+    Raises:
+        ValueError: If no key found for block_id
+    """
 ```
 
-### Differential Privacy
-
-#### `add_noise(data, **options) -> Any`
-
-Adds calibrated noise to a numerical value or aggregation to provide differential privacy guarantees.
+**Example:**
 
 ```python
-# Add Laplace noise to a single numerical value.
-noisy_count = privacy.add_noise(
-    data=1500, # The original value.
-    epsilon=1.0, # The privacy budget.
-    mechanism="laplace", # The noise-adding mechanism.
-    sensitivity=1 # The sensitivity of the query.
-)
+# Encrypt
+encrypted, meta = engine.encrypt_data(b"Secret message", "block-1")
 
-# Add noise to multiple fields in a dictionary.
-noisy_result = privacy.add_noise(
-    data={"total_users": 5000, "avg_age": 32.5},
-    epsilon=0.5,
-    field_sensitivities={"total_users": 1, "avg_age": 0.1} # The sensitivity of each field.
-)
+# Decrypt
+decrypted = engine.decrypt_data(encrypted, "block-1", meta)
+assert decrypted == b"Secret message"
 ```
 
-#### `private_aggregation(data, query, **options) -> Any`
+### Batch Encryption
 
-Performs a differentially private aggregation on a dataset.
+For high-throughput scenarios:
 
 ```python
-# Calculate a differentially private sum.
-private_sum = privacy.private_aggregation(
-    data=user_ages,
-    query="sum",
-    epsilon=1.0
+# Sequential batch
+data_blocks = [
+    (b"data1", "block-1"),
+    (b"data2", "block-2"),
+    (b"data3", "block-3"),
+]
+
+results = engine.encrypt_batch(data_blocks)
+for encrypted, meta in results:
+    print(f"Encrypted: {len(encrypted)} bytes")
+
+# Parallel batch (faster for large datasets)
+results = engine.encrypt_batch_parallel(data_blocks)
+```
+
+## Encryption Modes
+
+```python
+from maif.privacy import EncryptionMode
+
+EncryptionMode.NONE              # No encryption
+EncryptionMode.AES_GCM           # AES-256-GCM (default, fastest)
+EncryptionMode.CHACHA20_POLY1305 # ChaCha20-Poly1305 (mobile-friendly)
+EncryptionMode.HOMOMORPHIC       # Paillier homomorphic (compute on encrypted)
+```
+
+| Mode | Speed | Use Case |
+|------|-------|----------|
+| AES_GCM | Fastest | General purpose, hardware accelerated |
+| CHACHA20_POLY1305 | Fast | Mobile, no AES hardware |
+| HOMOMORPHIC | Slow | Compute on encrypted data |
+
+## Anonymization
+
+### anonymize_data
+
+Anonymize sensitive data while preserving utility.
+
+```python
+def anonymize_data(self, data: str, context: str) -> str:
+    """
+    Anonymize sensitive data.
+
+    Args:
+        data: Text to anonymize
+        context: Context key for consistent pseudonyms
+
+    Returns:
+        Anonymized text with pseudonyms
+    """
+```
+
+**Example:**
+
+```python
+engine = PrivacyEngine()
+
+# Anonymize text
+text = "John Smith lives at 123 Main St. Email: john@example.com"
+anon = engine.anonymize_data(text, "customer-data")
+print(anon)
+# "ANON_NAME_0000 lives at 123 Main St. Email: ANON_EMAIL_0001"
+
+# Same context = consistent pseudonyms
+text2 = "Contact John Smith for details"
+anon2 = engine.anonymize_data(text2, "customer-data")
+# "Contact ANON_NAME_0000 for details" (same pseudonym)
+```
+
+### Detected Patterns
+
+The anonymizer detects:
+- **Email addresses**: `john@example.com` → `ANON_EMAIL_0001`
+- **SSN**: `123-45-6789` → `ANON_SSN_0002`
+- **Phone numbers**: `555-123-4567` → `ANON_PHONE_0003`
+- **Credit cards**: `1234-5678-9012-3456` → `ANON_CREDIT_CARD_0004`
+- **Names**: `John Smith` → `ANON_NAME_0000`
+
+## Access Control
+
+### add_access_rule
+
+Add an access control rule.
+
+```python
+from maif.privacy import AccessRule
+
+rule = AccessRule(
+    subject="user-123",           # User/agent ID
+    resource="block-*",           # Resource pattern (supports wildcards)
+    permissions=["read", "write"], # List of permissions
+    conditions={},                 # Additional conditions
+    expiry=time.time() + 86400    # Optional expiry timestamp
 )
 
-# Calculate a differentially private histogram.
-private_histogram = privacy.private_aggregation(
-    data=categories,
-    query="histogram",
-    epsilon=2.0,
-    categories=["A", "B", "C"] # The categories for the histogram.
-)
+engine.add_access_rule(rule)
 ```
+
+### check_access
+
+Check if a subject has permission.
+
+```python
+def check_access(
+    self,
+    subject: str,
+    resource: str,
+    permission: str
+) -> bool:
+    """
+    Check access permission.
+
+    Args:
+        subject: User/agent identifier
+        resource: Resource identifier
+        permission: Required permission
+
+    Returns:
+        True if access is granted
+    """
+```
+
+**Example:**
+
+```python
+from maif.privacy import AccessRule
+
+engine = PrivacyEngine()
+
+# Grant read access
+rule = AccessRule(
+    subject="reader-agent",
+    resource="document-*",
+    permissions=["read"]
+)
+engine.add_access_rule(rule)
+
+# Check access
+engine.check_access("reader-agent", "document-123", "read")   # True
+engine.check_access("reader-agent", "document-123", "write")  # False
+engine.check_access("other-agent", "document-123", "read")    # False
+```
+
+### Pattern Matching
+
+Resources support wildcards:
+- `*` - matches any resource
+- `document-*` - matches resources starting with "document-"
 
 ## Privacy Policies
 
-### Policy Definition
+### set_privacy_policy
 
-Define reusable privacy policies to enforce consistent rules across your application.
-
-```python
-# Use one of the predefined policies for common use cases.
-public_policy = PrivacyPolicy.PUBLIC
-confidential_policy = PrivacyPolicy.CONFIDENTIAL
-
-# Create a custom policy for specific compliance needs.
-custom_policy = PrivacyPolicy(
-    level=PrivacyLevel.CONFIDENTIAL, # The privacy level of the policy.
-    name="Healthcare Policy", # A human-readable name for the policy.
-    
-    # --- Encryption Rules ---
-    encryption_required=True, # Mandate that data under this policy be encrypted.
-    encryption_algorithm="AES-GCM", # Specify the required encryption algorithm.
-    key_rotation_days=90, # Require that encryption keys be rotated every 90 days.
-    
-    # --- Anonymization Rules ---
-    anonymization_required=True, # Mandate that PII be anonymized.
-    pii_detection_enabled=True, # Ensure PII detection is run on the data.
-    
-    # --- Compliance Rules ---
-    compliance_frameworks=["HIPAA", "GDPR"], # Associate the policy with compliance frameworks.
-    data_residency="US", # Specify a data residency requirement.
-    
-    # --- Retention Rules ---
-    retention_period_days=2555, # Set a data retention period (approx. 7 years).
-    auto_deletion_enabled=True, # Enable automatic deletion of data after the retention period.
-    
-    # --- Audit Rules ---
-    audit_all_access=True # Ensure that all access to data under this policy is audited.
-)
-```
-
-### Policy Application
-
-#### `apply_policy(data, policy, **options) -> PolicyResult`
-
-Applies a privacy policy to a piece of data, enforcing all its rules.
+Set a privacy policy for a block.
 
 ```python
-# Apply the custom healthcare policy to a medical record.
-protected = privacy.apply_policy(
-    data=medical_record,
-    policy=custom_policy,
-    user_role="nurse", # Provide the user's role for access control checks.
-    access_purpose="treatment", # Provide the purpose of access for auditing.
-    strict_enforcement=True # Fail the operation if any policy rule cannot be met.
-)
+from maif.privacy import PrivacyPolicy, PrivacyLevel, EncryptionMode
 
-print(f"Protections applied: {protected.protections_applied}")
-print(f"Audit ID: {protected.audit_id}")
-```
-
-#### `validate_policy_compliance(data, policy) -> ComplianceResult`
-
-Checks if a piece of data is compliant with a given policy.
-
-```python
-# Validate a piece of data against a policy.
-compliance = privacy.validate_policy_compliance(
-    data=sensitive_data,
-    policy=confidential_policy
-)
-
-# If the data is not compliant, print the violations and suggested fixes.
-if not compliance.is_compliant:
-    for violation in compliance.violations:
-        print(f"Violation: {violation.description}")
-        print(f"Suggested Fix: {violation.suggested_fix}")
-```
-
-## Advanced Features
-
-### Privacy-Preserving Analytics
-
-Perform aggregate queries on sensitive datasets with differential privacy guarantees.
-
-```python
-# Perform a differentially private count of users over 18.
-user_count = privacy.private_query(
-    dataset=user_dataset,
-    query={
-        "type": "count",
-        "filter": {"age": {"gte": 18}},
-        "epsilon": 1.0 # The privacy budget for this query.
-    }
-)
-
-# Calculate a differentially private average income with clipping to limit the influence of outliers.
-avg_income = privacy.private_query(
-    dataset=user_dataset,
-    query={
-        "type": "average",
-        "field": "income",
-        "epsilon": 0.5,
-        "clipping_bound": 200000 # The upper bound for clipping income values.
-    }
-)
-```
-
-### Homomorphic Encryption
-
-Perform computations directly on encrypted data without decrypting it first.
-
-```python
-# Encrypt a list of numbers using a homomorphic encryption scheme.
-encrypted_numbers = privacy.homomorphic_encrypt(
-    data=[100, 200, 300],
-    scheme="CKKS" # The homomorphic encryption scheme to use.
-)
-
-# Perform a sum operation on the encrypted data.
-encrypted_sum = encrypted_numbers.sum()
-# Decrypt the result to get the actual sum.
-actual_sum = privacy.homomorphic_decrypt(encrypted_sum)
-```
-
-## Audit & Compliance
-
-### Audit Logging
-
-Retrieve detailed audit logs of all privacy-related operations.
-
-```python
-# Retrieve audit logs with specific filters.
-audits = privacy.get_audit_log(
-    start_date="2024-01-01",
-    operation_types=["encrypt", "decrypt", "anonymize"], # Filter by operation type.
-    user_ids=["user123"] # Filter by user ID.
-)
-
-# Iterate through the audit log entries.
-for entry in audits:
-    print(f"Operation: {entry.operation}")
-    print(f"User: {entry.user_id}")
-    print(f"Success: {entry.success}")
-```
-
-### Compliance Reporting
-
-Generate reports to help with compliance audits for frameworks like GDPR and HIPAA.
-
-```python
-# Generate a GDPR compliance report for January 2024 in PDF format.
-gdpr_report = privacy.generate_compliance_report(
-    framework="GDPR",
-    start_date="2024-01-01",
-    end_date="2024-01-31",
-    format="pdf"
-)
-
-print(f"Overall compliance score: {gdpr_report.compliance_score:.1%}")
-```
-
-## Error Handling
-
-The `PrivacyEngine` raises specific exceptions for different types of privacy-related errors.
-
-```python
-from maif.exceptions import (
-    PrivacyError,        # Base exception for privacy-related errors.
-    EncryptionError,     # Raised on encryption/decryption failures.
-    PolicyViolationError,# Raised when a privacy policy is violated.
-    PIIDetectionError    # Raised on errors during PII detection.
-)
-
-try:
-    encrypted = privacy.encrypt(data)
-    anonymized = privacy.anonymize(text)
-    
-except PolicyViolationError as e:
-    logger.error(f"Policy violation: {e}")
-except EncryptionError as e:
-    logger.error(f"Encryption failed: {e}")
-except PIIDetectionError as e:
-    logger.error(f"PII detection failed: {e}")
-```
-
-## Best Practices
-
-### Security
-
-Follow these best practices to ensure the security of your privacy-preserving systems.
-
-```python
-# 1. Use a strong encryption algorithm and a high number of key derivation rounds.
-privacy = PrivacyEngine(
-    default_algorithm="ChaCha20-Poly1305",
-    key_derivation_rounds=100000
-)
-
-# 2. Implement a key rotation policy.
-privacy.rotate_keys(rotation_policy="90_days")
-
-# 3. Enable comprehensive auditing for all operations.
-privacy.configure(audit_all_operations=True)
-```
-
-### Performance
-
-Follow these best practices to optimize the performance of the `PrivacyEngine`.
-
-```python
-# 1. Enable parallel processing and key caching for high-throughput applications.
-privacy = PrivacyEngine(
-    parallel_processing=True,
-    cache_encrypted_keys=True
-)
-
-# 2. Use batch operations where possible.
-encrypted_batch = privacy.encrypt_batch(data_list)
-```
-
-### Compliance
-
-Follow these best practices to maintain compliance with regulations like GDPR and HIPAA.
-
-```python
-# 1. Define clear, explicit privacy policies.
 policy = PrivacyPolicy(
-    compliance_frameworks=["GDPR", "HIPAA"],
-    audit_required=True
+    privacy_level=PrivacyLevel.CONFIDENTIAL,
+    encryption_mode=EncryptionMode.AES_GCM,
+    anonymization_required=True,
+    audit_required=True,
+    retention_period=90,  # days
+    geographic_restrictions=["US", "EU"],
+    purpose_limitation=["analytics", "support"]
 )
 
-# 2. Regularly validate your data against your policies.
-compliance = privacy.validate_policy_compliance(data, policy)
-
-# 3. Set a long retention period for audit trails to meet legal requirements.
-privacy.configure(audit_retention_days=2555)
+engine.set_privacy_policy("block-123", policy)
 ```
 
-## Related APIs
+### get_privacy_policy
 
-- **[Security](/api/security/index)** - Security and access control
-- **[Access Control](/api/security/access-control)** - Permission management
-- **[Cryptography](/api/security/crypto)** - Cryptographic operations 
+Get the privacy policy for a block.
+
+```python
+policy = engine.get_privacy_policy("block-123")
+if policy:
+    print(f"Privacy level: {policy.privacy_level.value}")
+```
+
+## Privacy Levels
+
+```python
+from maif.privacy import PrivacyLevel
+
+PrivacyLevel.PUBLIC       # No restrictions
+PrivacyLevel.LOW          # Minimal protection
+PrivacyLevel.INTERNAL     # Internal use only
+PrivacyLevel.MEDIUM       # Standard protection
+PrivacyLevel.CONFIDENTIAL # Encrypted + access control
+PrivacyLevel.HIGH         # Strong protection
+PrivacyLevel.SECRET       # Maximum protection
+PrivacyLevel.TOP_SECRET   # Military-grade protection
+```
+
+## Data Retention
+
+### enforce_retention_policy
+
+Enforce retention policies and delete expired data.
+
+```python
+def enforce_retention_policy(self) -> List[str]:
+    """
+    Enforce retention policies.
+
+    Returns:
+        List of deleted block IDs
+    """
+```
+
+**Example:**
+
+```python
+# Set retention policy
+engine.retention_policies["block-123"] = {
+    "created_at": time.time() - (100 * 24 * 3600),  # 100 days ago
+    "retention_days": 90
+}
+
+# Enforce policies
+deleted = engine.enforce_retention_policy()
+print(f"Deleted blocks: {deleted}")  # ["block-123"]
+```
+
+## Privacy Reports
+
+### generate_privacy_report
+
+Generate a privacy compliance report.
+
+```python
+def generate_privacy_report(self) -> Dict[str, Any]:
+    """
+    Generate privacy report.
+
+    Returns:
+        Dictionary with privacy metrics
+    """
+```
+
+**Example:**
+
+```python
+report = engine.generate_privacy_report()
+print(f"Total blocks: {report['total_blocks']}")
+print(f"Encrypted blocks: {report['encrypted_blocks']}")
+print(f"Access rules: {report['access_rules_count']}")
+print(f"Privacy levels: {report['privacy_levels']}")
+```
+
+## Advanced Privacy Features
+
+### Differential Privacy
+
+Add noise to preserve privacy:
+
+```python
+from maif.privacy import DifferentialPrivacy
+
+dp = DifferentialPrivacy(epsilon=1.0)  # Privacy budget
+
+# Add noise to a value
+noisy_value = dp.add_noise(42.0, sensitivity=1.0)
+
+# Add noise to a vector
+vector = [1.0, 2.0, 3.0]
+noisy_vector = dp.add_noise_to_vector(vector, sensitivity=1.0)
+```
+
+### Secure Multiparty Computation
+
+Share secrets across parties:
+
+```python
+from maif.privacy import SecureMultipartyComputation
+
+smpc = SecureMultipartyComputation()
+
+# Split a secret into shares
+secret = 42
+shares = smpc.secret_share(secret, num_parties=3)
+print(f"Shares: {shares}")  # [random1, random2, remaining]
+
+# Reconstruct from shares
+reconstructed = smpc.reconstruct_secret(shares)
+assert reconstructed == secret
+```
+
+### Zero-Knowledge Proofs
+
+Prove knowledge without revealing:
+
+```python
+from maif.privacy import ZeroKnowledgeProof
+
+zkp = ZeroKnowledgeProof()
+
+# Create commitment
+value = b"secret data"
+commitment = zkp.commit(value)
+
+# Later: verify without revealing value
+nonce = zkp.commitments[base64.b64encode(commitment).decode()]
+is_valid = zkp.verify_commitment(commitment, value, nonce)
+```
+
+## Integration with MAIFEncoder
+
+```python
+from maif import MAIFEncoder
+from maif.privacy import PrivacyLevel, EncryptionMode
+
+# Create encoder with privacy enabled
+encoder = MAIFEncoder(
+    agent_id="my-agent",
+    enable_privacy=True
+)
+
+# Add encrypted block
+block_id = encoder.add_text_block(
+    "Sensitive information",
+    privacy_level=PrivacyLevel.CONFIDENTIAL,
+    encryption_mode=EncryptionMode.AES_GCM,
+    anonymize=True
+)
+
+# Save
+encoder.save("private.maif")
+```
+
+## Thread Safety
+
+The `PrivacyEngine` is thread-safe. All methods use internal locks:
+
+```python
+import threading
+
+engine = PrivacyEngine()
+
+def encrypt_worker(data, block_id):
+    return engine.encrypt_data(data, block_id)
+
+# Safe for concurrent use
+threads = [
+    threading.Thread(target=encrypt_worker, args=(f"data-{i}".encode(), f"block-{i}"))
+    for i in range(10)
+]
+for t in threads:
+    t.start()
+for t in threads:
+    t.join()
+```
+
+## Performance Tips
+
+1. **Use batch encryption** for multiple blocks
+2. **Enable batch keys** (default) for faster throughput
+3. **Use parallel batch** for large datasets
+4. **Choose AES-GCM** when hardware acceleration is available
+
+```python
+# Fast: batch encryption with shared key
+results = engine.encrypt_batch(data_blocks)
+
+# Fastest: parallel batch encryption
+results = engine.encrypt_batch_parallel(data_blocks)
+```

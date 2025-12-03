@@ -123,12 +123,11 @@ Repository = "https://github.com/maif-ai/maif"
 Changelog = "https://github.com/maif-ai/maif/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["maif", "maif_sdk"]
+packages = ["maif"]
 py-modules = ["maif_api"]
 
 [tool.setuptools.package-data]
 maif = ["*.json", "*.yaml", "schemas/*.json", "templates/*.yaml", "templates/*.json"]
-maif_sdk = ["*.json", "*.yaml"]
 
 [tool.black]
 line-length = 120
@@ -172,7 +171,7 @@ check_untyped_defs = true
 strict_equality = true
 
 [tool.coverage.run]
-source = ["maif", "maif_sdk"]
+source = ["maif", "maif_api"]
 omit = [
     "*/tests/*",
     "*/test_*.py",

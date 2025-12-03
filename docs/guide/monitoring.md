@@ -1,995 +1,462 @@
 # Monitoring & Observability
 
-MAIF provides comprehensive monitoring and observability capabilities for production deployments. This guide covers metrics collection, logging, alerting, and performance monitoring for enterprise-grade operations.
+This guide covers monitoring MAIF applications in production, including health checks, metrics collection, and observability patterns.
 
 ## Overview
 
-MAIF's monitoring and observability features:
+MAIF includes built-in components for:
 
-- **Real-time Metrics**: System, application, and business metrics
-- **Distributed Tracing**: End-to-end request tracing
-- **Centralized Logging**: Structured logging across all components
-- **Intelligent Alerting**: Proactive issue detection and notification
-- **Performance Analytics**: Deep insights into system performance
+- **Health Checks**: Verify system health
+- **Rate Limiting**: Control request throughput
+- **Metrics**: Collect and aggregate metrics
+- **Cost Tracking**: Monitor resource usage
 
-```mermaid
-graph TB
-    subgraph "Monitoring & Observability Stack"
-        Applications[MAIF Applications]
-        
-        Applications --> MetricsCollection[Metrics Collection]
-        Applications --> LoggingSystem[Logging System]
-        Applications --> TracingSystem[Tracing System]
-        
-        MetricsCollection --> Prometheus[Prometheus]
-        MetricsCollection --> CustomMetrics[Custom Metrics]
-        
-        LoggingSystem --> StructuredLogs[Structured Logs]
-        LoggingSystem --> LogAggregation[Log Aggregation]
-        
-        TracingSystem --> DistributedTracing[Distributed Tracing]
-        TracingSystem --> SpanAnalysis[Span Analysis]
-        
-        Prometheus --> Grafana[Grafana Dashboards]
-        CustomMetrics --> Grafana
-        
-        LogAggregation --> ElasticSearch[ElasticSearch]
-        LogAggregation --> Kibana[Kibana]
-        
-        DistributedTracing --> Jaeger[Jaeger]
-        SpanAnalysis --> Jaeger
-        
-        Grafana --> AlertManager[Alert Manager]
-        ElasticSearch --> AlertManager
-        Jaeger --> AlertManager
-        
-        AlertManager --> Notifications[Notifications]
-        AlertManager --> AutoRemediation[Auto-Remediation]
-    end
-    
-    style Applications fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style Grafana fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style AlertManager fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-```
+## Built-in Components
 
-## Metrics Collection
+### Health Checker
 
-### 1. System Metrics
-
-Monitor system-level performance. The following code demonstrates how to configure a `MetricsCollector` and a `SystemMonitor` to track key infrastructure metrics like CPU, memory, disk, and network usage.
+MAIF provides a `HealthChecker` class for monitoring system health:
 
 ```python
-from maif_sdk import MetricsCollector, SystemMonitor
-import asyncio
+from maif import HealthChecker
 
-# Configure metrics collector to gather data every 30 seconds,
-# retain it for 30 days, and export in Prometheus format.
-metrics_collector = MetricsCollector(
-    collection_interval="30s",
-    retention_period="30d",
-    export_format="prometheus"
-)
+# Create a health checker
+health_checker = HealthChecker()
 
-# System monitor for infrastructure metrics.
-# `detailed_monitoring=True` enables granular data collection.
-system_monitor = SystemMonitor(
-    metrics_collector,
-    detailed_monitoring=True
-)
+# Perform health check
+status = health_checker.check()
+print(f"Health status: {status}")
 
-async def setup_system_monitoring():
-    # Configure which specific system metrics to track.
-    system_metrics = {
-        "cpu": {
-            "utilization": True,
-            "load_average": True,
-            "context_switches": True,
-            "interrupts": True
-        },
-        "memory": {
-            "usage": True,
-            "available": True,
-            "swap_usage": True,
-            "page_faults": True
-        },
-        "disk": {
-            "usage": True,
-            "io_operations": True,
-            "throughput": True,
-            "latency": True
-        },
-        "network": {
-            "bandwidth": True,
-            "packets": True,
-            "errors": True,
-            "connections": True
-        }
+# Check specific components
+components = health_checker.check_components()
+for component, status in components.items():
+    print(f"{component}: {status}")
+```
+
+### Rate Limiter
+
+Control request throughput with the built-in rate limiter:
+
+```python
+from maif import RateLimiter
+
+# Create a rate limiter (100 requests per second)
+rate_limiter = RateLimiter(requests_per_second=100)
+
+def handle_request(request):
+    if rate_limiter.allow():
+        # Process the request
+        process(request)
+    else:
+        # Rate limited
+        return "Too many requests", 429
+```
+
+### Metrics Aggregator
+
+Collect and aggregate metrics:
+
+```python
+from maif import MetricsAggregator
+
+# Create metrics aggregator
+metrics = MetricsAggregator()
+
+# Record metrics
+metrics.record("requests_total", 1)
+metrics.record("response_time_ms", 45.2)
+metrics.record("artifacts_created", 1)
+
+# Get aggregated metrics
+summary = metrics.get_summary()
+print(f"Total requests: {summary['requests_total']}")
+print(f"Avg response time: {summary['response_time_ms_avg']}ms")
+```
+
+### Cost Tracker
+
+Track resource usage and costs:
+
+```python
+from maif import CostTracker
+
+# Create cost tracker
+cost_tracker = CostTracker()
+
+# Track operations
+cost_tracker.record_operation("embedding_generation", tokens=1000)
+cost_tracker.record_operation("storage_write", bytes=1024000)
+cost_tracker.record_operation("api_call", count=1)
+
+# Get cost summary
+costs = cost_tracker.get_summary()
+print(f"Total cost: ${costs['total']:.4f}")
+```
+
+## MAIF File Monitoring
+
+### Monitor Artifact Integrity
+
+```python
+from maif_api import load_maif
+import os
+
+def check_artifact_health(artifact_path: str) -> dict:
+    """Check health of a MAIF artifact."""
+    status = {
+        "path": artifact_path,
+        "exists": os.path.exists(artifact_path),
+        "readable": False,
+        "integrity": False,
+        "size_bytes": 0
     }
     
-    # Apply the metric configuration to the monitor.
-    await system_monitor.configure_metrics(system_metrics)
+    if not status["exists"]:
+        return status
     
-    # Start the monitoring process in the background.
-    await system_monitor.start()
-    
-    print("System monitoring configured and started")
-
-# Run the asynchronous setup function.
-asyncio.run(setup_system_monitoring())
-```
-
-### 2. Application Metrics
-
-Monitor MAIF application performance. This example sets up an `ApplicationMonitor` to collect metrics related to API requests, artifact management, search performance, and storage operations.
-
-```python
-from maif_sdk import ApplicationMonitor
-import asyncio
-
-# Assume metrics_collector is already defined from the previous step.
-
-# Application-specific monitoring for a service named 'maif-production'.
-app_monitor = ApplicationMonitor(
-    metrics_collector,
-    application_name="maif-production"
-)
-
-async def setup_application_monitoring():
-    # Configure core application performance metrics to track.
-    app_metrics = {
-        "requests": {
-            "rate": True,
-            "duration": True,
-            "status_codes": True,
-            "error_rate": True
-        },
-        "artifacts": {
-            "count": True,
-            "size_distribution": True,
-            "creation_rate": True,
-            "access_patterns": True
-        },
-        "search": {
-            "query_rate": True,
-            "response_time": True,
-            "result_quality": True,
-            "cache_hit_ratio": True
-        },
-        "embeddings": {
-            "generation_rate": True,
-            "processing_time": True,
-            "similarity_computations": True,
-            "index_updates": True
-        },
-        "storage": {
-            "read_operations": True,
-            "write_operations": True,
-            "data_size": True,
-            "compression_ratio": True
-        }
-    }
-    
-    # Apply the application metric configuration.
-    await app_monitor.configure_metrics(app_metrics)
-    
-    # Configure custom business-level metrics.
-    business_metrics = {
-        "user_activity": {
-            "active_users": True,
-            "session_duration": True,
-            "feature_usage": True
-        },
-        "data_quality": {
-            "accuracy_scores": True,
-            "completeness_metrics": True,
-            "consistency_checks": True
-        }
-    }
-    
-    # Apply the business metric configuration.
-    await app_monitor.configure_business_metrics(business_metrics)
-    
-    # Start the application monitoring process.
-    await app_monitor.start()
-    print("Application monitoring configured and started.")
-
-# Run the asynchronous setup function.
-asyncio.run(setup_application_monitoring())
-```
-
-### 3. Custom Metrics
-
-Define and collect custom metrics tailored to your specific use case. The code below shows how to define and use different types of custom metrics: counters, gauges, histograms, and summaries.
-
-```python
-from maif_sdk import CustomMetrics
-import asyncio
-import time
-from types import SimpleNamespace
-
-# Assume metrics_collector is already defined.
-
-# Custom metrics for specific use cases.
-custom_metrics = CustomMetrics(metrics_collector)
-
-async def setup_custom_metrics():
-    # Define custom counters for tracking cumulative values.
-    await custom_metrics.define_counter(
-        name="documents_processed_total",
-        description="Total number of documents processed",
-        labels=["document_type", "processing_stage"]
-    )
-    
-    # Define custom gauges for tracking current values that can go up or down.
-    await custom_metrics.define_gauge(
-        name="active_connections",
-        description="Number of active client connections",
-        labels=["client_type", "region"]
-    )
-    
-    # Define custom histograms to track the distribution of observed values.
-    await custom_metrics.define_histogram(
-        name="semantic_search_duration_seconds",
-        description="Time spent on semantic search operations",
-        buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0], # Buckets for the histogram.
-        labels=["query_complexity", "index_size"]
-    )
-    
-    # Define custom summaries to track quantiles of observed values.
-    await custom_metrics.define_summary(
-        name="embedding_similarity_scores",
-        description="Distribution of embedding similarity scores",
-        quantiles=[0.5, 0.9, 0.95, 0.99], # Quantiles to calculate.
-        labels=["embedding_model", "data_type"]
-    )
-
-# Example of how to use the custom metrics within your application code.
-async def process_document(document):
-    # Increment a counter metric.
-    await custom_metrics.increment_counter(
-        "documents_processed_total",
-        labels={"document_type": document.type, "processing_stage": "ingestion"}
-    )
-    
-    # Record an observation in a histogram.
-    start_time = time.time()
-    # ... business logic to process the document ...
-    time.sleep(0.02) # Simulate work
-    duration = time.time() - start_time
-    
-    # This metric does not exist, using the search duration histogram as an example.
-    await custom_metrics.record_histogram(
-        "semantic_search_duration_seconds",
-        duration,
-        labels={"query_complexity": "medium", "index_size": "large"}
-    )
-    print(f"Processed document of type {document.type} in {duration:.4f} seconds.")
-
-async def main():
-    await setup_custom_metrics()
-    # Create a mock document to process.
-    mock_document = SimpleNamespace(type="pdf")
-    await process_document(mock_document)
-
-# Run the main asynchronous function.
-asyncio.run(main())
-```
-
-## Distributed Tracing
-
-### 1. Request Tracing
-
-Trace requests across distributed components:
-
-```python
-from maif_sdk import DistributedTracer
-import opentelemetry.trace as trace
-
-# Configure distributed tracing
-tracer = trace.get_tracer(__name__)
-distributed_tracer = DistributedTracer(
-    service_name="maif-service",
-    jaeger_endpoint="http://jaeger:14268/api/traces",
-    sampling_rate=0.1  # Sample 10% of traces
-)
-
-async def setup_distributed_tracing():
-    # Configure trace sampling
-    await distributed_tracer.configure_sampling({
-        "default": 0.1,
-        "high_priority": 1.0,
-        "background_tasks": 0.01
-    })
-    
-    # Set up trace exporters
-    exporters = [
-        {"type": "jaeger", "endpoint": "http://jaeger:14268/api/traces"},
-        {"type": "zipkin", "endpoint": "http://zipkin:9411/api/v2/spans"},
-        {"type": "console", "enabled": False}  # For debugging
-    ]
-    
-    for exporter in exporters:
-        await distributed_tracer.add_exporter(exporter)
-    
-    # Start tracing
-    await distributed_tracer.start()
-
-# Instrumented function example
-async def search_artifacts(query, user_id):
-    with tracer.start_as_current_span("search_artifacts") as span:
-        span.set_attribute("query", query)
-        span.set_attribute("user_id", user_id)
-        
-        # Trace semantic processing
-        with tracer.start_as_current_span("semantic_processing"):
-            embeddings = await generate_query_embeddings(query)
-            span.set_attribute("embedding_dimension", len(embeddings))
-        
-        # Trace search execution
-        with tracer.start_as_current_span("search_execution"):
-            results = await execute_search(embeddings)
-            span.set_attribute("result_count", len(results))
-        
-        # Trace result processing
-        with tracer.start_as_current_span("result_processing"):
-            processed_results = await process_search_results(results)
-        
-        span.set_attribute("total_results", len(processed_results))
-        return processed_results
-
-await setup_distributed_tracing()
-```
-
-### 2. Performance Tracing
-
-Trace performance-critical operations:
-
-```python
-from maif_sdk import PerformanceTracer
-
-# Performance-focused tracing
-perf_tracer = PerformanceTracer(
-    detailed_timing=True,
-    memory_tracking=True,
-    cpu_profiling=True
-)
-
-async def setup_performance_tracing():
-    # Configure performance tracking
-    await perf_tracer.configure({
-        "track_memory_allocations": True,
-        "track_cpu_usage": True,
-        "track_io_operations": True,
-        "track_network_calls": True
-    })
-    
-    # Define performance thresholds
-    thresholds = {
-        "slow_operation": "1s",
-        "memory_spike": "100MB",
-        "high_cpu": "80%",
-        "io_bottleneck": "100ms"
-    }
-    
-    await perf_tracer.set_thresholds(thresholds)
-    
-    # Start performance tracing
-    await perf_tracer.start()
-
-# Performance-traced function
-@perf_tracer.trace_performance
-async def process_large_dataset(dataset):
-    # This function will be automatically traced for performance
-    with perf_tracer.memory_context():
-        # Memory usage will be tracked
-        processed_data = []
-        
-        for batch in dataset.batches(1000):
-            with perf_tracer.cpu_context():
-                # CPU usage will be tracked
-                batch_result = await cpu_intensive_processing(batch)
-                processed_data.extend(batch_result)
-    
-    return processed_data
-
-await setup_performance_tracing()
-```
-
-## Centralized Logging
-
-### 1. Structured Logging
-
-Implement structured logging across all components:
-
-```python
-from maif_sdk import StructuredLogger
-import json
-
-# Configure structured logger
-logger = StructuredLogger(
-    service_name="maif-service",
-    log_level="INFO",
-    output_format="json",
-    include_trace_id=True
-)
-
-async def setup_structured_logging():
-    # Configure log structure
-    log_schema = {
-        "timestamp": "iso8601",
-        "level": "string",
-        "service": "string",
-        "trace_id": "string",
-        "span_id": "string",
-        "user_id": "string",
-        "operation": "string",
-        "duration_ms": "number",
-        "status": "string",
-        "error": "object",
-        "metadata": "object"
-    }
-    
-    await logger.configure_schema(log_schema)
-    
-    # Set up log destinations
-    destinations = [
-        {"type": "console", "enabled": True},
-        {"type": "file", "path": "/logs/maif.log", "rotation": "daily"},
-        {"type": "elasticsearch", "endpoint": "http://elasticsearch:9200"},
-        {"type": "cloudwatch", "log_group": "/aws/maif/production"}
-    ]
-    
-    for destination in destinations:
-        await logger.add_destination(destination)
-    
-    # Start logging
-    await logger.start()
-
-# Structured logging usage
-async def create_artifact(name, user_id):
-    operation_start = time.time()
-    
-    logger.info("artifact_creation_started", {
-        "user_id": user_id,
-        "artifact_name": name,
-        "operation": "create_artifact"
-    })
+    status["size_bytes"] = os.path.getsize(artifact_path)
     
     try:
-        artifact = await perform_artifact_creation(name, user_id)
-        
-        duration = (time.time() - operation_start) * 1000
-        logger.info("artifact_creation_completed", {
-            "user_id": user_id,
-            "artifact_id": artifact.id,
-            "artifact_name": name,
-            "duration_ms": duration,
-            "status": "success",
-            "operation": "create_artifact"
-        })
-        
-        return artifact
-        
+        artifact = load_maif(artifact_path)
+        status["readable"] = True
+        status["integrity"] = artifact.verify_integrity()
+        status["content_count"] = len(artifact.get_content_list())
     except Exception as e:
-        duration = (time.time() - operation_start) * 1000
-        logger.error("artifact_creation_failed", {
-            "user_id": user_id,
-            "artifact_name": name,
-            "duration_ms": duration,
-            "status": "error",
-            "error": {
-                "type": type(e).__name__,
-                "message": str(e),
-                "stack_trace": traceback.format_exc()
-            },
-            "operation": "create_artifact"
+        status["error"] = str(e)
+    
+    return status
+
+# Check artifact health
+health = check_artifact_health("my_artifact.maif")
+print(f"Artifact healthy: {health['integrity']}")
+```
+
+### Monitor Multiple Artifacts
+
+```python
+import os
+from maif_api import load_maif
+
+class ArtifactMonitor:
+    """Monitor a directory of MAIF artifacts."""
+    
+    def __init__(self, directory: str):
+        self.directory = directory
+        self.last_check = {}
+    
+    def scan(self) -> list:
+        """Scan and check all artifacts."""
+        results = []
+        
+        for filename in os.listdir(self.directory):
+            if filename.endswith('.maif'):
+                path = os.path.join(self.directory, filename)
+                status = self._check_file(path)
+                results.append(status)
+        
+        return results
+    
+    def _check_file(self, path: str) -> dict:
+        """Check a single artifact file."""
+        status = {
+            "path": path,
+            "name": os.path.basename(path),
+            "healthy": False,
+            "size_bytes": os.path.getsize(path),
+            "modified": os.path.getmtime(path)
+        }
+        
+        try:
+            artifact = load_maif(path)
+            status["healthy"] = artifact.verify_integrity()
+            status["blocks"] = len(artifact.get_content_list())
+        except Exception as e:
+            status["error"] = str(e)
+        
+        return status
+    
+    def get_unhealthy(self) -> list:
+        """Get list of unhealthy artifacts."""
+        results = self.scan()
+        return [r for r in results if not r.get("healthy", False)]
+
+# Usage
+monitor = ArtifactMonitor("./artifacts")
+unhealthy = monitor.get_unhealthy()
+if unhealthy:
+    print(f"Warning: {len(unhealthy)} unhealthy artifacts found")
+```
+
+## Integration with Standard Tools
+
+### Python Logging
+
+```python
+import logging
+from maif_api import create_maif
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('maif_app')
+
+def create_monitored_artifact(name: str, content: str):
+    """Create artifact with logging."""
+    logger.info(f"Creating artifact: {name}")
+    
+    try:
+        artifact = create_maif(name)
+        artifact.add_text(content)
+        artifact.save(f"{name}.maif")
+        
+        logger.info(f"Artifact created successfully: {name}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create artifact {name}: {e}")
+        return False
+```
+
+### Prometheus Metrics
+
+Export metrics to Prometheus:
+
+```python
+# requirements: prometheus_client
+
+from prometheus_client import Counter, Histogram, start_http_server
+from maif_api import create_maif, load_maif
+import time
+
+# Define metrics
+ARTIFACTS_CREATED = Counter(
+    'maif_artifacts_created_total',
+    'Total number of artifacts created',
+    ['agent_id']
+)
+
+ARTIFACT_OPERATIONS = Histogram(
+    'maif_operation_duration_seconds',
+    'Duration of MAIF operations',
+    ['operation']
+)
+
+ARTIFACT_SIZE = Histogram(
+    'maif_artifact_size_bytes',
+    'Size of MAIF artifacts'
+)
+
+def create_artifact_with_metrics(agent_id: str, content: str, path: str):
+    """Create artifact with Prometheus metrics."""
+    start = time.time()
+    
+    artifact = create_maif(agent_id)
+    artifact.add_text(content)
+    artifact.save(path)
+    
+    # Record metrics
+    duration = time.time() - start
+    ARTIFACTS_CREATED.labels(agent_id=agent_id).inc()
+    ARTIFACT_OPERATIONS.labels(operation='create').observe(duration)
+    
+    import os
+    ARTIFACT_SIZE.observe(os.path.getsize(path))
+    
+    return artifact
+
+# Start metrics server
+start_http_server(8000)
+print("Metrics available at http://localhost:8000/metrics")
+```
+
+### Structured JSON Logging
+
+```python
+import json
+import logging
+from datetime import datetime
+
+class JSONFormatter(logging.Formatter):
+    """JSON log formatter for MAIF."""
+    
+    def format(self, record):
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        
+        # Add extra fields
+        if hasattr(record, 'artifact_id'):
+            log_entry['artifact_id'] = record.artifact_id
+        if hasattr(record, 'operation'):
+            log_entry['operation'] = record.operation
+        if hasattr(record, 'duration_ms'):
+            log_entry['duration_ms'] = record.duration_ms
+        
+        return json.dumps(log_entry)
+
+# Configure JSON logging
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+
+logger = logging.getLogger('maif_json')
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+# Log with extra context
+logger.info(
+    "Artifact created",
+    extra={
+        'artifact_id': 'artifact_123',
+        'operation': 'create',
+        'duration_ms': 45.2
+    }
+)
+```
+
+## Health Check Endpoint
+
+Create a simple health check endpoint:
+
+```python
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+from maif_api import load_maif
+import os
+
+class HealthHandler(BaseHTTPRequestHandler):
+    """HTTP handler for health checks."""
+    
+    def do_GET(self):
+        if self.path == '/health':
+            status = self.check_health()
+            
+            self.send_response(200 if status['healthy'] else 503)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(status).encode())
+    
+    def check_health(self) -> dict:
+        """Check overall system health."""
+        status = {
+            'healthy': True,
+            'checks': {}
+        }
+        
+        # Check if artifacts directory exists
+        artifacts_dir = os.environ.get('ARTIFACTS_DIR', './artifacts')
+        status['checks']['artifacts_dir'] = os.path.isdir(artifacts_dir)
+        
+        # Check sample artifact if it exists
+        sample_path = os.path.join(artifacts_dir, 'health_check.maif')
+        if os.path.exists(sample_path):
+            try:
+                artifact = load_maif(sample_path)
+                status['checks']['sample_artifact'] = artifact.verify_integrity()
+            except:
+                status['checks']['sample_artifact'] = False
+        
+        # Overall health
+        status['healthy'] = all(status['checks'].values())
+        
+        return status
+
+# Run health check server
+def run_health_server(port: int = 8080):
+    server = HTTPServer(('', port), HealthHandler)
+    print(f"Health check server running on port {port}")
+    server.serve_forever()
+
+# run_health_server()  # Uncomment to run
+```
+
+## Monitoring Patterns
+
+### Operation Timing
+
+```python
+import time
+from contextlib import contextmanager
+
+@contextmanager
+def timed_operation(name: str, logger=None):
+    """Context manager for timing operations."""
+    start = time.time()
+    try:
+        yield
+    finally:
+        duration = (time.time() - start) * 1000  # ms
+        message = f"{name} completed in {duration:.2f}ms"
+        if logger:
+            logger.info(message)
+        else:
+            print(message)
+
+# Usage
+with timed_operation("artifact_creation"):
+    artifact = create_maif("timed-artifact")
+    artifact.add_text("Some content")
+    artifact.save("timed.maif")
+```
+
+### Error Tracking
+
+```python
+from collections import defaultdict
+from datetime import datetime
+
+class ErrorTracker:
+    """Track and aggregate errors."""
+    
+    def __init__(self):
+        self.errors = defaultdict(list)
+    
+    def record(self, error_type: str, message: str, context: dict = None):
+        self.errors[error_type].append({
+            "timestamp": datetime.now().isoformat(),
+            "message": message,
+            "context": context or {}
         })
-        raise
-
-await setup_structured_logging()
-```
-
-### 2. Log Aggregation
-
-Aggregate logs from multiple sources:
-
-```python
-from maif_sdk import LogAggregator
-
-# Log aggregation configuration
-log_aggregator = LogAggregator(
-    buffer_size="10MB",
-    flush_interval="30s",
-    compression=True
-)
-
-async def setup_log_aggregation():
-    # Configure log sources
-    log_sources = [
-        {
-            "name": "application_logs",
-            "path": "/logs/maif-app-*.log",
-            "parser": "json",
-            "tags": {"component": "application", "environment": "production"}
-        },
-        {
-            "name": "system_logs",
-            "path": "/var/log/system.log",
-            "parser": "syslog",
-            "tags": {"component": "system", "environment": "production"}
-        },
-        {
-            "name": "access_logs",
-            "path": "/logs/access.log",
-            "parser": "nginx",
-            "tags": {"component": "nginx", "environment": "production"}
+    
+    def get_summary(self) -> dict:
+        return {
+            error_type: len(errors)
+            for error_type, errors in self.errors.items()
         }
-    ]
     
-    for source in log_sources:
-        await log_aggregator.add_source(source)
-    
-    # Configure log processing
-    processing_rules = [
-        {
-            "name": "enrich_user_context",
-            "condition": "user_id exists",
-            "action": "lookup_user_metadata"
-        },
-        {
-            "name": "detect_errors",
-            "condition": "level == 'ERROR'",
-            "action": "trigger_alert"
-        },
-        {
-            "name": "extract_metrics",
-            "condition": "operation exists",
-            "action": "generate_metric"
-        }
-    ]
-    
-    for rule in processing_rules:
-        await log_aggregator.add_processing_rule(rule)
-    
-    # Start aggregation
-    await log_aggregator.start()
+    def get_recent(self, error_type: str = None, limit: int = 10) -> list:
+        if error_type:
+            return self.errors[error_type][-limit:]
+        
+        all_errors = []
+        for errors in self.errors.values():
+            all_errors.extend(errors)
+        return sorted(all_errors, key=lambda x: x['timestamp'])[-limit:]
 
-await setup_log_aggregation()
-```
+# Usage
+tracker = ErrorTracker()
 
-## Alerting System
+try:
+    artifact = load_maif("nonexistent.maif")
+except Exception as e:
+    tracker.record("load_error", str(e), {"path": "nonexistent.maif"})
 
-### 1. Alert Configuration
-
-Set up intelligent alerting:
-
-```python
-from maif_sdk import AlertManager, AlertRule
-
-# Alert manager configuration
-alert_manager = AlertManager(
-    notification_channels=["email", "slack", "pagerduty"],
-    escalation_enabled=True,
-    alert_grouping=True
-)
-
-async def setup_alerting():
-    # Define alert rules
-    alert_rules = [
-        AlertRule(
-            name="high_error_rate",
-            description="Error rate exceeds threshold",
-            condition="error_rate > 5%",
-            duration="5m",
-            severity="warning",
-            labels={"team": "platform", "service": "maif"}
-        ),
-        AlertRule(
-            name="system_down",
-            description="System is not responding",
-            condition="up == 0",
-            duration="1m",
-            severity="critical",
-            labels={"team": "platform", "service": "maif"}
-        ),
-        AlertRule(
-            name="high_latency",
-            description="Response time is too high",
-            condition="response_time_p95 > 2s",
-            duration="10m",
-            severity="warning",
-            labels={"team": "platform", "service": "maif"}
-        ),
-        AlertRule(
-            name="disk_space_low",
-            description="Disk space is running low",
-            condition="disk_usage > 85%",
-            duration="15m",
-            severity="warning",
-            labels={"team": "infrastructure", "service": "maif"}
-        ),
-        AlertRule(
-            name="memory_leak",
-            description="Memory usage continuously increasing",
-            condition="memory_usage increase > 10% in 1h",
-            duration="30m",
-            severity="warning",
-            labels={"team": "platform", "service": "maif"}
-        )
-    ]
-    
-    for rule in alert_rules:
-        await alert_manager.add_rule(rule)
-    
-    # Configure notification channels
-    channels = {
-        "email": {
-            "smtp_server": "smtp.company.com",
-            "recipients": ["platform-team@company.com"],
-            "template": "alert_email_template"
-        },
-        "slack": {
-            "webhook_url": "https://hooks.slack.com/services/...",
-            "channel": "#alerts",
-            "template": "alert_slack_template"
-        },
-        "pagerduty": {
-            "api_key": "your-pagerduty-api-key",
-            "service_id": "your-service-id"
-        }
-    }
-    
-    for channel_name, config in channels.items():
-        await alert_manager.configure_channel(channel_name, config)
-    
-    # Start alert manager
-    await alert_manager.start()
-
-await setup_alerting()
-```
-
-### 2. Intelligent Alert Routing
-
-Configure smart alert routing and escalation:
-
-```python
-from maif_sdk import AlertRouter
-
-# Intelligent alert routing
-alert_router = AlertRouter(
-    alert_manager,
-    routing_strategy="intelligent"
-)
-
-async def setup_alert_routing():
-    # Define routing rules
-    routing_rules = [
-        {
-            "condition": "severity == 'critical'",
-            "actions": [
-                {"type": "notify", "channels": ["pagerduty", "slack"]},
-                {"type": "escalate", "delay": "15m", "to": "on_call_manager"}
-            ]
-        },
-        {
-            "condition": "severity == 'warning' and team == 'platform'",
-            "actions": [
-                {"type": "notify", "channels": ["slack"]},
-                {"type": "escalate", "delay": "1h", "to": "platform_team"}
-            ]
-        },
-        {
-            "condition": "labels.service == 'maif' and business_hours == false",
-            "actions": [
-                {"type": "notify", "channels": ["pagerduty"]},
-                {"type": "suppress", "duration": "30m", "similar_alerts": True}
-            ]
-        }
-    ]
-    
-    for rule in routing_rules:
-        await alert_router.add_routing_rule(rule)
-    
-    # Configure alert suppression
-    suppression_rules = [
-        {
-            "name": "maintenance_window",
-            "condition": "maintenance_mode == true",
-            "action": "suppress_all"
-        },
-        {
-            "name": "duplicate_alerts",
-            "condition": "same_alert_within_10m",
-            "action": "group_and_suppress"
-        }
-    ]
-    
-    for rule in suppression_rules:
-        await alert_router.add_suppression_rule(rule)
-    
-    # Start alert routing
-    await alert_router.start()
-
-await setup_alert_routing()
-```
-
-## Dashboards and Visualization
-
-### 1. Grafana Dashboards
-
-Create comprehensive monitoring dashboards:
-
-```python
-from maif_sdk import GrafanaDashboard
-
-# Grafana dashboard configuration
-grafana_dashboard = GrafanaDashboard(
-    grafana_url="http://grafana:3000",
-    api_key="your-grafana-api-key"
-)
-
-async def setup_grafana_dashboards():
-    # System overview dashboard
-    system_dashboard = {
-        "title": "MAIF System Overview",
-        "panels": [
-            {
-                "title": "Request Rate",
-                "type": "graph",
-                "targets": [
-                    {"expr": "rate(http_requests_total[5m])", "legend": "Requests/sec"}
-                ]
-            },
-            {
-                "title": "Response Time",
-                "type": "graph",
-                "targets": [
-                    {"expr": "histogram_quantile(0.95, http_request_duration_seconds_bucket)", "legend": "95th percentile"},
-                    {"expr": "histogram_quantile(0.50, http_request_duration_seconds_bucket)", "legend": "50th percentile"}
-                ]
-            },
-            {
-                "title": "Error Rate",
-                "type": "singlestat",
-                "targets": [
-                    {"expr": "rate(http_requests_total{status=~'5..'}[5m]) / rate(http_requests_total[5m])", "legend": "Error Rate"}
-                ]
-            },
-            {
-                "title": "Active Users",
-                "type": "singlestat",
-                "targets": [
-                    {"expr": "active_users", "legend": "Active Users"}
-                ]
-            }
-        ]
-    }
-    
-    await grafana_dashboard.create_dashboard(system_dashboard)
-    
-    # Application performance dashboard
-    app_dashboard = {
-        "title": "MAIF Application Performance",
-        "panels": [
-            {
-                "title": "Artifact Operations",
-                "type": "graph",
-                "targets": [
-                    {"expr": "rate(artifacts_created_total[5m])", "legend": "Created/sec"},
-                    {"expr": "rate(artifacts_accessed_total[5m])", "legend": "Accessed/sec"}
-                ]
-            },
-            {
-                "title": "Search Performance",
-                "type": "graph",
-                "targets": [
-                    {"expr": "rate(search_queries_total[5m])", "legend": "Queries/sec"},
-                    {"expr": "histogram_quantile(0.95, search_duration_seconds_bucket)", "legend": "95th percentile latency"}
-                ]
-            },
-            {
-                "title": "Cache Hit Ratio",
-                "type": "singlestat",
-                "targets": [
-                    {"expr": "cache_hits / (cache_hits + cache_misses)", "legend": "Hit Ratio"}
-                ]
-            }
-        ]
-    }
-    
-    await grafana_dashboard.create_dashboard(app_dashboard)
-
-await setup_grafana_dashboards()
-```
-
-### 2. Real-time Monitoring
-
-Set up real-time monitoring views:
-
-```python
-from maif_sdk import RealTimeMonitor
-
-# Real-time monitoring setup
-rt_monitor = RealTimeMonitor(
-    update_interval="5s",
-    retention_window="1h"
-)
-
-async def setup_realtime_monitoring():
-    # Configure real-time metrics
-    rt_metrics = [
-        "current_active_users",
-        "requests_per_second",
-        "average_response_time",
-        "error_rate",
-        "cpu_utilization",
-        "memory_usage",
-        "active_connections",
-        "queue_length"
-    ]
-    
-    for metric in rt_metrics:
-        await rt_monitor.add_metric(metric)
-    
-    # Set up real-time alerts
-    rt_alerts = [
-        {
-            "metric": "error_rate",
-            "threshold": 10,
-            "condition": "greater_than",
-            "action": "immediate_notification"
-        },
-        {
-            "metric": "response_time",
-            "threshold": 5000,  # 5 seconds
-            "condition": "greater_than",
-            "action": "performance_alert"
-        }
-    ]
-    
-    for alert in rt_alerts:
-        await rt_monitor.add_realtime_alert(alert)
-    
-    # Start real-time monitoring
-    await rt_monitor.start()
-
-await setup_realtime_monitoring()
+print(tracker.get_summary())
 ```
 
 ## Best Practices
 
-### 1. Monitoring Strategy
-
-Implement comprehensive monitoring strategy:
-
-```python
-async def monitoring_best_practices():
-    best_practices = {
-        "metrics": [
-            "Monitor the four golden signals: latency, traffic, errors, saturation",
-            "Use histogram metrics for timing measurements",
-            "Implement proper metric labeling strategy",
-            "Set up service level objectives (SLOs)",
-            "Monitor business metrics alongside technical metrics"
-        ],
-        "logging": [
-            "Use structured logging with consistent schema",
-            "Include correlation IDs for request tracing",
-            "Log at appropriate levels (DEBUG, INFO, WARN, ERROR)",
-            "Implement log sampling for high-volume scenarios",
-            "Include contextual information in logs"
-        ],
-        "alerting": [
-            "Alert on symptoms, not causes",
-            "Implement proper alert fatigue prevention",
-            "Use escalation policies for critical alerts",
-            "Test alert delivery mechanisms regularly",
-            "Document runbooks for common alerts"
-        ],
-        "dashboards": [
-            "Create role-specific dashboards",
-            "Use consistent visualization standards",
-            "Include both technical and business metrics",
-            "Implement dashboard as code",
-            "Regular dashboard maintenance and updates"
-        ]
-    }
-    
-    for category, practices in best_practices.items():
-        print(f"\n{category.upper()} BEST PRACTICES:")
-        for practice in practices:
-            print(f"  • {practice}")
-
-await monitoring_best_practices()
-```
-
-### 2. Performance Monitoring
-
-Monitor performance proactively:
-
-```python
-from maif_sdk import PerformanceMonitor
-
-# Performance monitoring setup
-perf_monitor = PerformanceMonitor(
-    baseline_collection_period="7d",
-    anomaly_detection=True,
-    performance_regression_detection=True
-)
-
-async def setup_performance_monitoring():
-    # Configure performance baselines
-    baselines = {
-        "search_latency_p95": "100ms",
-        "artifact_creation_time": "500ms",
-        "embedding_generation_time": "200ms",
-        "index_update_time": "1s"
-    }
-    
-    await perf_monitor.set_baselines(baselines)
-    
-    # Configure performance alerts
-    perf_alerts = [
-        {
-            "name": "performance_regression",
-            "condition": "current_performance < baseline * 0.8",
-            "action": "alert_performance_team"
-        },
-        {
-            "name": "performance_anomaly",
-            "condition": "anomaly_score > 0.8",
-            "action": "investigate_anomaly"
-        }
-    ]
-    
-    for alert in perf_alerts:
-        await perf_monitor.add_performance_alert(alert)
-    
-    # Start performance monitoring
-    await perf_monitor.start()
-
-await setup_performance_monitoring()
-```
-
-## Troubleshooting
-
-### Common Monitoring Issues
-
-1. **High Cardinality Metrics**
-   ```python
-   # Avoid high cardinality labels
-   # Bad: user_id as label (millions of users)
-   # Good: user_type as label (few types)
-   
-   await metrics_collector.configure_cardinality_limits({
-       "max_series_per_metric": 10000,
-       "cardinality_warning_threshold": 5000
-   })
-   ```
-
-2. **Alert Fatigue**
-   ```python
-   # Implement alert suppression and grouping
-   await alert_manager.configure_suppression({
-       "group_by": ["service", "severity"],
-       "group_wait": "30s",
-       "group_interval": "5m",
-       "repeat_interval": "12h"
-   })
-   ```
-
-3. **Missing Traces**
-   ```python
-   # Ensure proper trace propagation
-   await distributed_tracer.configure_propagation({
-       "formats": ["jaeger", "b3", "w3c"],
-       "auto_instrumentation": True
-   })
-   ```
+1. **Monitor artifact integrity** - Regular integrity checks prevent data corruption
+2. **Use structured logging** - JSON logs are easier to analyze
+3. **Track operation timing** - Identify performance bottlenecks
+4. **Set up alerts** - Get notified of failures immediately
+5. **Keep metrics lightweight** - Don't impact application performance
 
 ## Next Steps
 
-- Explore [Performance Optimization](performance.md) for performance tuning based on monitoring data
-- Learn about [Distributed Deployment](distributed.md) for monitoring distributed systems
-- Check out [ACID Transactions](acid.md) for transaction monitoring
-- See [Examples](../examples/) for complete monitoring implementations 
+- **[Performance →](/guide/performance)** - Optimize based on monitoring data
+- **[Architecture →](/guide/architecture)** - System design patterns
+- **[API Reference →](/api/)** - Complete documentation

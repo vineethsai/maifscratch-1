@@ -82,53 +82,57 @@ is_valid = verifier.verify_maif_signature(signed_manifest)
 - Timestamp verification
 - Non-repudiation guarantees
 
-#### Classified Security (NEW)
+#### Privacy-Enabled Security
 ```python
-from maif.classified_api import SecureMAIF
+from maif_api import create_maif
+from maif.privacy import PrivacyEngine, PrivacyLevel, EncryptionMode
 
-# Simple API for classified data
-maif = SecureMAIF(classification="SECRET")
+# Create MAIF with privacy enabled
+maif = create_maif("secure-agent", enable_privacy=True)
 
-# Grant clearance
-maif.grant_clearance("analyst.001", "SECRET", compartments=["CRYPTO"])
-
-# Store with automatic encryption
-doc_id = maif.store_classified_data(
-    data={"mission": "CLASSIFIED"},
-    classification="SECRET"
+# Add encrypted content
+maif.add_text(
+    "Sensitive data here",
+    encrypt=True,
+    anonymize=True  # Remove PII automatically
 )
 
-# Access control enforced
-if maif.can_access("analyst.001", doc_id):
-    data = maif.retrieve_classified_data(doc_id)
+# Save with digital signature
+maif.save("secure.maif", sign=True)
+
+# Verify integrity
+loaded = maif.load("secure.maif")
+is_valid = loaded.verify_integrity()
 ```
 
 **Features:**
-- Government classification levels (UNCLASSIFIED through TOP_SECRET/SCI)
-- Mandatory Access Control (Bell-LaPadula model)
-- PKI/CAC/PIV authentication support
-- Hardware MFA integration
-- FIPS 140-2 compliant encryption via AWS KMS
-- Immutable audit trails with AWS CloudWatch
-- Works with both AWS Commercial and GovCloud
+- Privacy levels (PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED)
+- AES-GCM and ChaCha20-Poly1305 encryption
+- Automatic PII detection and anonymization
+- Digital signatures for non-repudiation
+- Cryptographic hash chains for integrity
+- Block-level access control
 
 ### 3. Semantic Processing (`maif.semantic` & `maif.semantic_optimized`)
 
 #### Embeddings & Knowledge Graphs
 ```python
-from maif.semantic import SemanticProcessor, KnowledgeGraphBuilder
+from maif.semantic import SemanticEmbedder, KnowledgeGraphBuilder
 
-processor = SemanticProcessor()
-embeddings = processor.generate_embeddings(["text1", "text2"])
+# Text embeddings
+embedder = SemanticEmbedder()
+embedding = embedder.embed_text("Hello world")
+print(f"Embedding dimension: {len(embedding.vector)}")
 
+# Knowledge graph construction
 kg_builder = KnowledgeGraphBuilder()
-kg_builder.add_entity("entity1", {"type": "person", "name": "John"})
-kg_builder.add_relationship("entity1", "knows", "entity2")
+kg_builder.add_triple("entity1", "knows", "entity2")
+graph = kg_builder.build()
 ```
 
 **Features:**
 - Multimodal embeddings (text, image, audio)
-- Knowledge graph construction
+- Knowledge graph construction with triples
 - Semantic similarity search
 - Cross-modal attention mechanisms (ACAM algorithm)
 - Entity relationship modeling
@@ -260,37 +264,43 @@ for block in decoder.stream_blocks():
 - Performance profiling
 - Cache management
 
-### 9. Integration & Conversion (`maif.integration`)
+### 9. Integration & Conversion
 
-#### Format Conversion
+#### Using MAIF with AI Frameworks
 ```python
-from maif.integration import MAIFIntegration
+from maif_api import create_maif, load_maif
 
-# Create MAIF from various sources
-integration = MAIFIntegration()
-maif = integration.create_maif("my_agent")
+# Create MAIF artifact
+maif = create_maif("my_agent")
 
-# Add content from files
-maif.add_text_file("document.txt")
-maif.add_json_file("data.json")
-maif.save("output.maif")
+# Add text content
+maif.add_text("Document content here", title="Document 1")
+
+# Add multimodal content
+maif.add_multimodal({
+    "text": "Image description",
+    "type": "image_metadata"
+})
+
+# Save with signature
+maif.save("output.maif", sign=True)
+
+# Load and search
+loaded = load_maif("output.maif")
+results = loaded.search("relevant content", top_k=5)
 ```
 
-**Supported Formats:**
-- **Input**: JSON, XML, ZIP, TAR, CSV, TXT, MD, PDF, DOCX
-- **Output**: JSON, XML, ZIP, CSV, HTML
-
-**Framework Adapters:**
+**LangGraph Integration:**
 ```python
-from maif.framework_adapters import LangChainAdapter, CrewAIAdapter
+# See examples/langgraph/ for complete multi-agent RAG example
+from maif_api import create_maif
 
-# LangChain integration
-lc_adapter = LangChainAdapter(maif_path="knowledge.maif")
-docs = lc_adapter.load()
-
-# CrewAI integration
-crew_adapter = CrewAIAdapter(maif_path="agents.maif")
-agent_data = crew_adapter.get_agent_data("agent-001")
+# Use MAIF as durable memory for agents
+session_maif = create_maif("langgraph-session")
+session_maif.add_text(f"User query: {query}")
+session_maif.add_text(f"Retrieved chunks: {chunks}")
+session_maif.add_text(f"Model response: {answer}")
+session_maif.save("session.maif", sign=True)
 ```
 
 ### 10. Forensics & Analysis (`maif.forensics`)
@@ -437,31 +447,33 @@ encoder.add_validation_schema(data_schema)
 
 ### Installation
 ```bash
-pip install maif[full]  # Complete installation
-pip install maif[cli]   # CLI tools only
-pip install maif        # Core functionality
+# Clone and install from source
+git clone https://github.com/vineethsai/maifscratch-1.git
+cd maifscratch-1
+pip install -e .
 ```
 
 ### Quick Start
 ```python
-from maif.core import MAIFEncoder, MAIFDecoder
+from maif_api import create_maif, load_maif
 
 # Create
-encoder = MAIFEncoder(agent_id="quickstart")
-encoder.add_text_block("Hello, MAIF!")
-encoder.save("hello.maif", "hello_manifest.json")
+maif = create_maif("quickstart")
+maif.add_text("Hello, MAIF!")
+maif.save("hello.maif", sign=True)
 
 # Read
-decoder = MAIFDecoder("hello.maif", "hello_manifest.json")
-for block in decoder.blocks:
-    if block.block_type == "text":
-        print(block.data.decode())  # "Hello, MAIF!"
+loaded = load_maif("hello.maif")
+content = loaded.get_content_list()
+for item in content:
+    print(item.get("text"))  # "Hello, MAIF!"
 ```
 
 ### Examples
-- `examples/basic/basic_usage.py`: Basic operations
-- `examples/advanced/versioning_demo.py`: Version management
-- `examples/advanced/advanced_features_demo.py`: All features
+- `examples/basic/simple_api_demo.py`: Basic operations
+- `examples/basic/basic_usage.py`: Core encoder/decoder usage
+- `examples/advanced/novel_algorithms_demo.py`: ACAM, HSC, CSB algorithms
+- `examples/security/privacy_demo.py`: Privacy features
 - `examples/langgraph/`: Multi-agent RAG system (featured)
 
 ## Support & Documentation

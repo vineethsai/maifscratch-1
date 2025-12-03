@@ -69,10 +69,15 @@ class MAIFLangChainVectorStore(BaseVectorStore):
         
         # Create or load MAIF
         self.manifest_path = self.maif_path.with_suffix('.json')
-        if self.maif_path.exists():
-            self.decoder = MAIFDecoder(str(self.maif_path), str(self.manifest_path))
-            self.encoder = MAIFEncoder(existing_maif_path=str(self.maif_path),
-                                     existing_manifest_path=str(self.manifest_path))
+        if self.maif_path.exists() and self.manifest_path.exists():
+            try:
+                self.decoder = MAIFDecoder(str(self.maif_path), str(self.manifest_path))
+                self.encoder = MAIFEncoder(existing_maif_path=str(self.maif_path),
+                                         existing_manifest_path=str(self.manifest_path))
+            except Exception:
+                # If loading fails, start fresh
+                self.encoder = MAIFEncoder()
+                self.decoder = None
         else:
             self.encoder = MAIFEncoder()
             self.decoder = None

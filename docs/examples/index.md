@@ -131,14 +131,15 @@ Distributed agent systems with MAIF synchronization.
 The simplest possible MAIF agent:
 
 ```python
-from maif_sdk import create_client, create_artifact
+from maif_api import create_maif
 
 # Create agent with memory
-client = create_client("hello-agent")
-memory = create_artifact("hello-memory", client)
+memory = create_maif("hello-agent")
 
-# Add content with built-in features
-memory.add_text("Hello, MAIF world!", encrypt=True)
+# Add content
+memory.add_text("Hello, MAIF world!", title="Greeting")
+
+# Save with cryptographic signing
 memory.save("hello.maif", sign=True)
 
 print("✅ Your first AI agent memory is ready!")
@@ -149,23 +150,27 @@ print("✅ Your first AI agent memory is ready!")
 A more realistic agent with memory and privacy:
 
 ```python
-from maif_sdk import create_client, create_artifact
-from maif.privacy import PrivacyLevel, EncryptionMode
+from maif_api import create_maif, load_maif
+import os
 
 class PrivateChatAgent:
     def __init__(self, agent_id: str):
-        self.client = create_client(agent_id, enable_privacy=True)
-        self.memory = create_artifact(f"{agent_id}-chat", self.client)
+        self.agent_id = agent_id
+        self.memory_path = f"{agent_id}_memory.maif"
+        
+        # Load or create memory with privacy
+        if os.path.exists(self.memory_path):
+            self.memory = load_maif(self.memory_path)
+        else:
+            self.memory = create_maif(agent_id, enable_privacy=True)
     
     def chat(self, message: str, user_id: str) -> str:
         # Store message with privacy protection
         self.memory.add_text(
-            message,
+            f"User {user_id}: {message}",
             title="User Message",
-            privacy_level=PrivacyLevel.CONFIDENTIAL,
-            encryption_mode=EncryptionMode.AES_GCM,
-            anonymize=True,  # Remove PII automatically
-            metadata={"user_id": user_id, "type": "user_input"}
+            encrypt=True,
+            anonymize=True  # Remove PII automatically
         )
         
         # Search for relevant context
@@ -174,20 +179,23 @@ class PrivateChatAgent:
         # Generate response (integrate your LLM here)
         response = f"I understand you're asking about: {message}"
         
-        # Store response with same privacy level
+        # Store response
         self.memory.add_text(
-            response,
-            title="Agent Response", 
-            privacy_level=PrivacyLevel.CONFIDENTIAL,
-            metadata={"user_id": user_id, "type": "agent_response"}
+            f"Agent: {response}",
+            title="Agent Response",
+            encrypt=True
         )
         
         return response
+    
+    def save(self):
+        self.memory.save(self.memory_path, sign=True)
 
 # Usage
 agent = PrivateChatAgent("support-bot")
 response = agent.chat("How do I reset my password?", "user123")
 print(response)
+agent.save()
 ```
 
 ## Example Categories

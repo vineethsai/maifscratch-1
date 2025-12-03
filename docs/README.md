@@ -275,9 +275,10 @@ Brief introduction paragraph explaining what this page covers.
 
 ```python
 # Code examples should be complete and runnable
-from maif_sdk import create_client
+from maif_api import create_maif
 
-client = create_client("example-agent")
+maif = create_maif("example-agent")
+maif.add_text("Hello!")
 print("✅ Example works!")
 ```
 

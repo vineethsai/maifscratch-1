@@ -47,19 +47,6 @@ MAIF provides:
 # Basic installation
 pip install -e .
 
-# With AWS support
-pip install -e ".[aws]"
-
-# Full installation with all dependencies
-pip install -e ".[full]"
-```
-
-## Installation
-
-```bash
-# Basic installation
-pip install -e .
-
 # With optional features
 pip install -e ".[full]"  # All features
 pip install -e ".[ml]"    # Machine learning features
@@ -137,7 +124,7 @@ See `examples/langgraph/README.md` for details.
 ```
 maifscratch-1/
 ├── maif/                  # Core library (80 files)
-├── maif_sdk/             # High-level SDK
+├── maif_api.py           # High-level API
 ├── examples/
 │   ├── langgraph/        # Multi-agent RAG system ⭐
 │   ├── basic/            # Simple examples

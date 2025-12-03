@@ -1,43 +1,60 @@
-# AWS Macie Privacy Integration
+# Privacy-by-Design Demo
 
-This example demonstrates how MAIF integrates with AWS Macie to provide advanced privacy protection and PII (Personally Identifiable Information) detection.
+This example demonstrates MAIF's comprehensive privacy features including encryption, anonymization, and access control.
 
 ## Overview
 
-The Privacy Demo showcases the `MaciePrivacyEngine`, which uses AWS Macie to scan content for sensitive information before it is stored or processed.
+The Privacy Demo showcases MAIF's built-in privacy engine with multiple privacy levels, encryption modes, and differential privacy.
 
 ### Key Features
 
-- **PII Detection**: Automatically detects sensitive data like names, addresses, credit card numbers, etc.
-- **Privacy Levels**: Supports different privacy levels (e.g., PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED).
-- **Anonymization**: Can redact or mask sensitive information based on policy.
-- **Compliance Logging**: Logs privacy violations and actions for audit purposes.
+- **Encryption**: AES-GCM, ChaCha20-Poly1305 for data at rest
+- **Privacy Levels**: PUBLIC, CONFIDENTIAL, SECRET with different protections
+- **Anonymization**: Automatic PII detection and redaction
+- **Access Control**: Role-based permissions with audit logging
+- **Differential Privacy**: Statistical privacy for aggregate queries
 
 ## Running the Demo
 
-To run the demo, ensure you have AWS credentials configured and Macie enabled in your region (optional, but recommended for full functionality).
-
 ```bash
-python examples/aws_macie_privacy_demo.py
+cd examples/security
+python3 privacy_demo.py
 ```
 
 ## Code Example
 
 ```python
-# Initialize Privacy Engine
-privacy_engine = MaciePrivacyEngine(
-    region_name="us-east-1",
-    enable_automated_discovery=True
-)
+from maif.core import MAIFEncoder
+from maif.privacy import PrivacyEngine, PrivacyPolicy, PrivacyLevel, EncryptionMode
 
-# Create Privacy Policy
+# Create encoder with privacy enabled
+encoder = MAIFEncoder(agent_id="privacy_demo", enable_privacy=True)
+
+# Create privacy policy
 policy = PrivacyPolicy(
     privacy_level=PrivacyLevel.CONFIDENTIAL,
-    encryption_mode=EncryptionMode.AES256,
+    encryption_mode=EncryptionMode.AES_GCM,
     anonymization_required=True
 )
 
-# Process Content
-content = "My credit card number is 4532-xxxx-xxxx-xxxx"
-processed_content = privacy_engine.process_content(content, policy)
+# Add encrypted content
+confidential_text = "Employee John Smith from john.smith@company.com"
+encoder.add_text_block(
+    confidential_text,
+    metadata={"description": "HR record"},
+    privacy_policy=policy,
+    anonymize=True
+)
+
+# Save with encryption
+encoder.build_maif("private.maif", "manifest.json")
 ```
+
+## What You'll Learn
+
+- How to apply different privacy levels
+- Encryption modes and when to use them
+- Automatic PII anonymization
+- Access control rules
+- Differential privacy for statistics
+- Audit trail generation

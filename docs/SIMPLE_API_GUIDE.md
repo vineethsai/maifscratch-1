@@ -1,168 +1,85 @@
 # MAIF Simple API Guide
 
-The MAIF SDK provides an easy-to-use interface for working with Multimodal Artifact File Format (MAIF) files. This guide covers both the standard SDK and the new classified security API.
+The MAIF SDK provides an easy-to-use interface for working with Multimodal Artifact File Format (MAIF) files.
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-pip install maif
+# Clone from GitHub
+git clone https://github.com/vineethsai/maifscratch-1.git
+cd maifscratch-1
+
+# Install
+pip install -e .
 ```
 
-### Basic Usage with SDK
+### Basic Usage
 
 ```python
-from maif_sdk.client import MAIFClient
-from maif_sdk.artifact import Artifact
+from maif_api import create_maif, load_maif
 
-# Create client and artifact
-client = MAIFClient()
-artifact = Artifact(name="my_agent", client=client)
+# Create a new MAIF artifact
+maif = create_maif("my_agent")
 
 # Add content
-artifact.add_text("Hello world!")
-artifact.add_multimodal({
-    "text": "A beautiful sunset",
-    "description": "Nature photography"
-})
+maif.add_text("Hello world!", title="Greeting")
+maif.add_text("This is important data", title="Data")
 
-# Save
-artifact.save("my_artifact.maif")
+# Save to file
+maif.save("my_artifact.maif")
 
-# Load existing
-loaded = Artifact.load("my_artifact.maif", client=client)
-```
+# Load existing artifact
+loaded = load_maif("my_artifact.maif")
 
-### Classified Data API (NEW)
-
-For working with classified data, use the simplified SecureMAIF API:
-
-```python
-from maif.classified_api import SecureMAIF
-
-# Create secure instance
-maif = SecureMAIF(classification="SECRET")
-
-# Grant clearance
-maif.grant_clearance("user.001", "SECRET")
-
-# Store classified data
-doc_id = maif.store_classified_data(
-    data={"mission": "OPERATION_X"},
-    classification="SECRET"
-)
-
-# Retrieve with access control
-if maif.can_access("user.001", doc_id):
-    data = maif.retrieve_classified_data(doc_id)
+# Verify integrity
+assert loaded.verify_integrity()
 ```
 
 ## API Reference
 
-### SDK API: `Artifact` Class
+### `MAIF` Class
 
 The main class for creating and manipulating MAIF files.
 
 #### Constructor
 
 ```python
-Artifact(name: str, client: MAIFClient,
-         security_level: SecurityLevel = SecurityLevel.PUBLIC)
-```
+from maif_api import create_maif
 
-- `name`: Name of the artifact
-- `client`: MAIFClient instance
-- `security_level`: Security level (PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED)
+maif = create_maif(
+    agent_id="my_agent",      # Unique identifier for the agent
+    enable_privacy=False      # Enable privacy features
+)
+```
 
 #### Key Methods
 
-##### `add_text(text: str, metadata: dict = None)`
+##### `add_text(text, title=None, encrypt=False, anonymize=False)`
 
 Add text content to the artifact.
 
+**Parameters:**
+- `text` (str): Text content to add
+- `title` (str, optional): Title for the content
+- `encrypt` (bool): Whether to encrypt the content
+- `anonymize` (bool): Whether to anonymize PII
+
+**Returns:** Block ID (str)
+
 **Example:**
 ```python
-artifact.add_text(
+block_id = maif.add_text(
     "This is confidential information",
-    metadata={"title": "Secret Document"}
+    title="Secret Document",
+    encrypt=True
 )
-```
-
-##### `add_binary(data: bytes, content_type: str, metadata: dict = None)`
-
-Add binary data (images, documents, etc).
-
-**Example:**
-```python
-with open("image.jpg", "rb") as f:
-    artifact.add_binary(f.read(), "image/jpeg", {"title": "Photo"})
-```
-
-### Classified Security API: `SecureMAIF` Class
-
-Simple API for handling classified data with built-in security.
-
-#### Constructor
-
-```python
-SecureMAIF(classification: str = "UNCLASSIFIED",
-          region: str = None, use_fips: bool = True)
-```
-
-- `classification`: Default classification level
-- `region`: AWS region (auto-detected if not specified)
-- `use_fips`: Enable FIPS 140-2 compliant mode
-
-#### Key Methods
-
-##### Authentication
-
-```python
-# PKI/CAC authentication
-user_id = maif.authenticate_with_pki(certificate_pem)
-
-# Hardware MFA
-challenge = maif.authenticate_with_mfa(user_id, token_serial)
-verified = maif.verify_mfa(challenge, token_code)
-```
-
-##### User Management
-
-```python
-# Grant clearance
-maif.grant_clearance(
-    user_id="analyst.001",
-    level="SECRET",
-    compartments=["CRYPTO", "SIGINT"],
-    caveats=["NOFORN"]
-)
-
-# Check clearance
-level = maif.check_clearance("analyst.001")
-```
-
-##### Data Operations
-
-```python
-# Store classified data
-doc_id = maif.store_classified_data(
-    data={"content": "classified"},
-    classification="SECRET",
-    compartments=["CRYPTO"]
-)
-
-# Access control
-if maif.can_access("analyst.001", doc_id):
-    data = maif.retrieve_classified_data(doc_id)
-    
-# Audit logging
-maif.log_access("analyst.001", doc_id, "read")
 ```
 
 ##### `add_image(image_path, title=None, extract_metadata=True)`
 
-Add image to the MAIF.
+Add an image to the artifact.
 
 **Parameters:**
 - `image_path` (str): Path to image file
@@ -178,7 +95,7 @@ block_id = maif.add_image("photo.jpg", title="Vacation Photo")
 
 ##### `add_video(video_path, title=None, extract_metadata=True)`
 
-Add video to the MAIF.
+Add a video to the artifact.
 
 **Parameters:**
 - `video_path` (str): Path to video file
@@ -268,30 +185,65 @@ Load existing MAIF file.
 
 **Returns:** MAIF instance
 
+**Example:**
+```python
+from maif_api import load_maif
+
+maif = load_maif("existing_artifact.maif")
+```
+
 ## Convenience Functions
 
 ### `create_maif(agent_id="default_agent", enable_privacy=False)`
 
 Create a new MAIF instance.
 
+```python
+from maif_api import create_maif
+
+maif = create_maif("my_agent")
+```
+
 ### `load_maif(filepath)`
 
 Load existing MAIF file.
+
+```python
+from maif_api import load_maif
+
+maif = load_maif("artifact.maif")
+```
 
 ### `quick_text_maif(text, output_path, title=None)`
 
 Quickly create a MAIF with just text content.
 
+```python
+from maif_api import quick_text_maif
+
+quick_text_maif("Hello world!", "hello.maif", title="Greeting")
+```
+
 ### `quick_multimodal_maif(content, output_path, title=None)`
 
 Quickly create a MAIF with multimodal content.
+
+```python
+from maif_api import quick_multimodal_maif
+
+quick_multimodal_maif(
+    {"text": "Description", "category": "Example"},
+    "multimodal.maif",
+    title="Demo"
+)
+```
 
 ## Examples
 
 ### Example 1: Simple Document
 
 ```python
-from maif.integration import create_maif
+from maif_api import create_maif
 
 # Create MAIF
 maif = create_maif("document_agent")
@@ -306,7 +258,7 @@ maif.save("document.maif")
 ### Example 2: Multimodal Content with ACAM
 
 ```python
-from maif.integration import create_maif
+from maif_api import create_maif
 
 # Create MAIF
 maif = create_maif("multimodal_agent")
@@ -327,7 +279,7 @@ maif.save("product.maif")
 ### Example 3: Privacy-Enabled MAIF
 
 ```python
-from maif.integration import create_maif
+from maif_api import create_maif
 
 # Create MAIF with privacy
 maif = create_maif("secure_agent", enable_privacy=True)
@@ -351,7 +303,7 @@ print(f"Encrypted blocks: {report.get('encrypted_blocks', 0)}")
 ### Example 4: Search and Retrieval
 
 ```python
-from maif.integration import load_maif
+from maif_api import load_maif
 
 # Load existing MAIF
 maif = load_maif("knowledge_base.maif")
@@ -366,7 +318,7 @@ for result in results:
 ### Example 5: Working with Embeddings
 
 ```python
-from maif.integration import create_maif
+from maif_api import create_maif
 
 # Create MAIF
 maif = create_maif("embedding_agent")
@@ -387,9 +339,59 @@ maif.add_embeddings(
 maif.save("embeddings.maif")
 ```
 
-## Advanced Features
+## Advanced Usage
 
-### Novel Algorithms
+### Using Core Classes Directly
+
+For more control, use the core MAIF classes:
+
+```python
+from maif.core import MAIFEncoder, MAIFDecoder
+
+# Encoding
+encoder = MAIFEncoder(agent_id="advanced_agent")
+encoder.add_text_block("Content", metadata={"custom": "data"})
+encoder.save("advanced.maif")
+
+# Decoding
+decoder = MAIFDecoder("advanced.maif")
+for block in decoder.read_blocks():
+    print(f"Block type: {block.block_type}")
+```
+
+### Security Features
+
+```python
+from maif.security import MAIFSigner, MAIFVerifier
+
+# Sign data
+signer = MAIFSigner(agent_id="secure_agent")
+signer.add_provenance_entry("create", "artifact_001")
+
+# Verify signatures
+verifier = MAIFVerifier()
+# verifier.verify_signature(data, signature)
+```
+
+### Privacy Features
+
+```python
+from maif.privacy import PrivacyEngine, PrivacyLevel, EncryptionMode
+
+# Create privacy engine
+privacy = PrivacyEngine()
+
+# Encrypt data
+encrypted = privacy.encrypt_data(
+    b"sensitive data",
+    EncryptionMode.AES_GCM
+)
+
+# Anonymize text
+anonymized = privacy.anonymize_data("John Doe, SSN: 123-45-6789")
+```
+
+## Novel Algorithms
 
 The API automatically uses MAIF's novel algorithms:
 
@@ -397,25 +399,11 @@ The API automatically uses MAIF's novel algorithms:
 - **HSC (Hierarchical Semantic Compression)**: Used in `add_embeddings()` when `compress=True`
 - **CSB (Cryptographic Semantic Binding)**: Automatically applied for integrity verification
 
-### Security Features
-
-- **Digital Signatures**: Enabled by default when saving (`sign=True`)
-- **Encryption**: Available for text content (`encrypt=True`)
-- **Anonymization**: Automatic PII detection and replacement (`anonymize=True`)
-- **Access Control**: Granular permissions (advanced usage)
-
-### Performance Optimizations
-
-- **Streaming**: Large files processed with bounded memory usage
-- **Compression**: Multiple algorithms automatically selected for optimal results
-- **Indexing**: Efficient search with sub-50ms response times
-- **Validation**: Multi-level integrity checking with error recovery
-
 ## Error Handling
 
-The API includes comprehensive error handling:
-
 ```python
+from maif_api import create_maif, load_maif
+
 try:
     maif = create_maif("my_agent")
     maif.add_text("Hello world!")
@@ -439,18 +427,8 @@ except Exception as e:
 5. **Use compression for embeddings**: Enable `compress=True` for large embedding sets
 6. **Sign important files**: Keep `sign=True` for audit trails and provenance
 
-## Integration with Existing Code
+## Next Steps
 
-The Simple API is designed to work alongside the existing MAIF library:
-
-```python
-# You can still use the full library
-from maif.core import MAIFEncoder
-from maif.integration import create_maif
-
-# Mix and match as needed
-simple_maif = create_maif("agent1")
-advanced_encoder = MAIFEncoder("agent2")
-```
-
-This allows gradual migration to the simpler API while maintaining access to advanced features when needed.
+- [Getting Started Guide](/guide/getting-started)
+- [API Reference](/api/)
+- [Examples](/examples/)

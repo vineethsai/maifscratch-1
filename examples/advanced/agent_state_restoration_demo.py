@@ -12,8 +12,7 @@ import asyncio
 import os
 from pathlib import Path
 from maif.agentic_framework import MAIFAgent, AgentState
-from maif_sdk.aws_backend import AWSConfig
-from maif_sdk.types import SecurityLevel
+from maif_api import create_maif, MAIF
 
 
 class StatefulProcessingAgent(MAIFAgent):
@@ -83,22 +82,13 @@ async def demonstrate_state_restoration():
     
     print("=== Agent State Restoration Demo ===\n")
     
-    # Set AWS credentials
-    os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
-    
-    aws_config = AWSConfig(
-        region_name="us-east-1",
-        s3_bucket=os.environ.get('MAIF_S3_BUCKET', 'maif-agent-states')
-    )
-    
     # Phase 1: Create and run agent
     print("Phase 1: Creating and running agent...")
     agent = StatefulProcessingAgent(
         agent_id="processor_001",
         workspace_path="./agent_workspace/stateful",
         config={"processing_batch_size": 5},
-        use_aws=True,
-        aws_config=aws_config
+        use_aws=False
     )
     
     # Run agent (will stop after 5 items)
@@ -121,9 +111,8 @@ async def demonstrate_state_restoration():
     restored_agent = StatefulProcessingAgent(
         agent_id="processor_001_restored",
         workspace_path="./agent_workspace/restored",
-        use_aws=True,
-        aws_config=aws_config,
-        restore_from=dump_path  # Specify dump to restore from
+        use_aws=False,
+        restore_from=dump_path
     )
     
     print(f"Agent restored! Items previously processed: {restored_agent.items_processed}")
@@ -143,66 +132,22 @@ async def demonstrate_state_restoration():
     print("Phase 3: Using from_dump class method...")
     
     # Method 2: Create agent directly from dump
-    agent_from_dump = StatefulProcessingAgent.from_dump(
-        dump_path=dump_path,
-        workspace_path="./agent_workspace/from_dump",
-        use_aws=True,
-        aws_config=aws_config
-    )
-    
-    print(f"Agent created from dump: {agent_from_dump.agent_id}")
-    print(f"Previous work: {agent_from_dump.items_processed} items")
-    
-    # Process a few more items
-    await agent_from_dump.run(items_to_process=2)
-    
-    agent_from_dump.shutdown()
-
-
-async def demonstrate_aws_s3_restoration():
-    """Demonstrate restoring agent from S3-stored dump."""
-    
-    print("\n=== S3-Based State Restoration Demo ===\n")
-    
-    aws_config = AWSConfig(
-        region_name="us-east-1",
-        s3_bucket="maif-agent-states"
-    )
-    
-    # Create agent
-    agent = StatefulProcessingAgent(
-        agent_id="s3_processor",
-        workspace_path="./agent_workspace/s3_test",
-        use_aws=True,
-        aws_config=aws_config
-    )
-    
-    await agent.initialize()
-    
-    # Process some items
-    await agent.run(items_to_process=3)
-    
-    # Dump to S3
-    dump_path = agent.dump_complete_state()
-    
-    # Get S3 artifact ID
-    artifact_id = dump_path.name  # When using AWS, this is the artifact ID
-    s3_path = f"s3://{aws_config.s3_bucket}/artifacts/{artifact_id}"
-    
-    print(f"State saved to S3: {s3_path}")
-    
-    agent.shutdown()
-    
-    # Restore from S3
-    print("\nRestoring from S3...")
-    restored = StatefulProcessingAgent.from_dump(
-        dump_path=artifact_id,  # Can use artifact ID directly
-        use_aws=True,
-        aws_config=aws_config
-    )
-    
-    print(f"Restored agent: {restored.agent_id}")
-    print(f"Items processed: {restored.items_processed}")
+    try:
+        agent_from_dump = StatefulProcessingAgent.from_dump(
+            dump_path=dump_path,
+            workspace_path="./agent_workspace/from_dump",
+            use_aws=False
+        )
+        
+        print(f"Agent created from dump: {agent_from_dump.agent_id}")
+        print(f"Previous work: {agent_from_dump.items_processed} items")
+        
+        # Process a few more items
+        await agent_from_dump.run(items_to_process=2)
+        
+        agent_from_dump.shutdown()
+    except Exception as e:
+        print(f"from_dump demo skipped: {e}")
 
 
 class CheckpointAgent(MAIFAgent):
@@ -257,7 +202,7 @@ async def demonstrate_checkpointing():
         agent_id="checkpoint_agent",
         workspace_path="./agent_workspace/checkpoints",
         checkpoint_interval=10,
-        use_aws=True
+        use_aws=False
     )
     
     await agent.run()
@@ -265,14 +210,17 @@ async def demonstrate_checkpointing():
     # Show how to restore from any checkpoint
     if agent.checkpoints:
         print(f"\nRestoring from checkpoint 2...")
-        restored = CheckpointAgent.from_dump(
-            dump_path=agent.checkpoints[1],  # Second checkpoint
-            use_aws=True
-        )
-        
-        config = restored.config
-        print(f"Restored to checkpoint {config.get('checkpoint_number')} ")
-        print(f"(created at item {config.get('checkpoint_at_item')})")
+        try:
+            restored = CheckpointAgent.from_dump(
+                dump_path=agent.checkpoints[1],  # Second checkpoint
+                use_aws=False
+            )
+            
+            config = restored.config
+            print(f"Restored to checkpoint {config.get('checkpoint_number')} ")
+            print(f"(created at item {config.get('checkpoint_at_item')})")
+        except Exception as e:
+            print(f"Checkpoint restoration skipped: {e}")
     
     agent.shutdown()
 
@@ -280,9 +228,6 @@ async def demonstrate_checkpointing():
 if __name__ == "__main__":
     # Run basic restoration demo
     asyncio.run(demonstrate_state_restoration())
-    
-    # Uncomment to run S3 restoration demo
-    # asyncio.run(demonstrate_aws_s3_restoration())
     
     # Uncomment to run checkpointing demo
     # asyncio.run(demonstrate_checkpointing())

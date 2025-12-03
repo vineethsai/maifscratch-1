@@ -133,6 +133,7 @@ Commitment = Hash(embedding || source_data || nonce)
 **Example Implementations**:
 - [`privacy_demo.py`](../examples/security/privacy_demo.py): Privacy-preserving AI
 - [`video_demo.py`](../examples/advanced/video_demo.py): Video processing with semantic analysis
+- [`simple_api_demo.py`](../examples/basic/simple_api_demo.py): High-level API usage
 
 ### **Validation Methodology**
 
@@ -184,20 +185,20 @@ Commitment = Hash(embedding || source_data || nonce)
 ### **Running the Implementation**
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install MAIF
+pip install -e .
 
 # Run core tests
 python -m pytest tests/
 
 # Test privacy features
-python examples/privacy_demo.py
+python examples/security/privacy_demo.py
 
 # Test video processing
-python examples/video_demo.py
+python examples/advanced/video_demo.py
 
-# Run benchmarks
-python run_benchmark.py
+# Test simple API
+python examples/basic/simple_api_demo.py
 ```
 
 ### **Key Implementation Files**

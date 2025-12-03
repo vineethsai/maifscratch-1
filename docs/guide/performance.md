@@ -1,420 +1,400 @@
 # Performance Optimization
 
-MAIF delivers enterprise-grade performance with 400+ MB/s streaming throughput and <50ms semantic search latency. This guide covers optimization techniques, benchmarking, and scaling strategies for maximum performance.
+MAIF is designed for high-performance operations. This guide covers optimization techniques for maximum throughput and efficiency.
 
-## Overview
+## Performance Features
 
-MAIF's performance optimization covers:
+MAIF provides:
 
-- **High-Throughput Processing**: Optimize for maximum data ingestion rates
-- **Low-Latency Operations**: Minimize response times for real-time applications
-- **Memory Efficiency**: Optimize memory usage for large datasets
-- **CPU Optimization**: Leverage multi-core processing effectively
-- **Storage Performance**: Optimize disk I/O and caching strategies
+- **Memory-Mapped I/O**: Efficient file access
+- **Write Buffering**: Batched writes for throughput
+- **Compression**: Reduce storage and I/O
+- **Batch Processing**: Process data efficiently
+- **Streaming**: Handle large files
 
-```mermaid
-graph TB
-    subgraph "Performance Optimization Stack"
-        Application[Application Layer]
-        
-        Application --> Caching[Caching Layer]
-        Application --> BatchProcessing[Batch Processing]
-        Application --> AsyncOps[Async Operations]
-        
-        Caching --> MemoryCache[Memory Cache]
-        Caching --> DistributedCache[Distributed Cache]
-        Caching --> EmbeddingCache[Embedding Cache]
-        
-        BatchProcessing --> VectorizedOps[Vectorized Operations]
-        BatchProcessing --> ParallelProcessing[Parallel Processing]
-        BatchProcessing --> StreamProcessing[Stream Processing]
-        
-        AsyncOps --> ConnectionPooling[Connection Pooling]
-        AsyncOps --> NonBlockingIO[Non-blocking I/O]
-        AsyncOps --> ConcurrentExecution[Concurrent Execution]
-        
-        MemoryCache --> Storage[Storage Layer]
-        DistributedCache --> Storage
-        VectorizedOps --> Storage
-        ParallelProcessing --> Storage
-        ConnectionPooling --> Storage
-        
-        Storage --> SSDOptimization[SSD Optimization]
-        Storage --> IndexOptimization[Index Optimization]
-        Storage --> CompressionEngine[Compression Engine]
-    end
-    
-    style Application fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style Caching fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style Storage fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-```
+## Memory-Mapped I/O
 
-## High-Throughput Optimization
-
-### 1. Batch Processing
-
-Maximize throughput with efficient batching using the client's write buffer. The following code configures a high-throughput client with memory-mapped I/O and compression.
+Enable memory mapping for large files:
 
 ```python
-from maif_sdk import create_client, ContentType
-from maif.batch_processor import BatchProcessor  # If using the full MAIF package
-import time
+from maif.core import MAIFEncoder
 
-# Configure a client for high-throughput scenarios with write buffering
-# and compression enabled.
-client = create_client(
-    agent_id="high-throughput-agent",
-    enable_mmap=True,         # Memory-mapped I/O for performance
-    buffer_size=128*1024,     # 128KB write buffer
-    enable_compression=True,   # Enable compression
-    max_concurrent_writers=8   # Allow parallel write operations
+# Enable memory mapping
+encoder = MAIFEncoder(
+    agent_id="performance-agent",
+    enable_mmap=True
 )
 
-# Utility function to break a list into smaller chunks.
-def chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+# Large write operations are more efficient
+for i in range(10000):
+    encoder.add_text_block(f"Document {i}")
 
-def high_throughput_ingestion():
-    # Create an artifact to store the data.
-    artifact = client.create_artifact("high-throughput")
-    
-    # Prepare a large dataset for ingestion.
-    documents = []
-    for i in range(100000):
-        documents.append({
-            "content": f"Document {i} with substantial content for processing",
-            "metadata": {"index": i, "batch": "bulk_load"}
-        })
-    
-    # Process the documents in optimized batches.
-    # The client's write buffer automatically combines small writes.
-    start_time = time.time()
-    
-    for i, doc in enumerate(documents):
-        artifact.add_text(
-            doc["content"],
-            metadata=doc["metadata"]
-        )
-        
-        # Periodically flush to avoid memory buildup
-        if i % 5000 == 0:
-            client.flush_all_buffers()
-            # The processor automatically optimizes the batch submission.
-            await batch_processor.add_text_batch(artifact, batch)
-    
-    print(f"Processed {len(documents)} documents with high throughput")
-
-# Run the asynchronous ingestion function.
-asyncio.run(high_throughput_ingestion())
+encoder.save("large.maif")
 ```
 
-### 2. Parallel Processing
-
-Leverage multiple CPU cores to process data in parallel. This example configures a client for parallel processing and uses a `ThreadPoolExecutor` to execute tasks concurrently.
+### Block Storage with mmap
 
 ```python
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from maif_sdk import create_client
-from types import SimpleNamespace
+from maif.block_storage import BlockStorage
 
-# Configure a client for parallel processing with a specified number of worker threads.
-parallel_client = create_client(
-    endpoint="https://api.maif.ai",
-    max_workers=16,
-    processing_mode="parallel"
-)
+# Direct block access with memory mapping
+storage = BlockStorage("large.maif", enable_mmap=True)
 
-# Mock function to simulate loading a large dataset.
-def load_large_dataset():
-    class Dataset:
-        def chunks(self, size):
-            for i in range(0, 10000, size):
-                yield [SimpleNamespace(content=f"Item {j}", metadata={"index": j}) for j in range(i, i + size)]
-    return Dataset()
-
-async def process_chunk_async(artifact, chunk):
-    # Process each item in the chunk independently and asynchronously.
-    chunk_results = []
-    for item in chunk:
-        result = await artifact.add_text(item.content, metadata=item.metadata)
-        chunk_results.append(result)
-    return chunk_results
-
-async def parallel_processing_example():
-    # Create an artifact for the parallel processing task.
-    artifact = await parallel_client.create_artifact("parallel-processing")
-    
-    # Load the large dataset.
-    large_dataset = load_large_dataset()
-    
-    # Use a ThreadPoolExecutor for parallel execution of async tasks.
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        # Create a list of asyncio tasks to be run in parallel.
-        tasks = []
-        for chunk in large_dataset.chunks(1000):
-            task = asyncio.create_task(
-                process_chunk_async(artifact, chunk)
-            )
-            tasks.append(task)
-        
-        # Wait for all the parallel tasks to complete.
-        results = await asyncio.gather(*tasks)
-    
-    print(f"Processed {len(results)} chunks in parallel")
-
-# Run the asynchronous parallel processing example.
-asyncio.run(parallel_processing_example())
+# Efficient random access
+block = storage.get_block("block-id")
 ```
 
-## Low-Latency Optimization
+## Write Buffering
 
-### 1. Caching Strategies
-
-Implement comprehensive caching for minimal latency. This example demonstrates setting up a multi-level cache (`memory`, `redis`, `disk`) and a specialized embedding cache to accelerate search operations.
+The encoder uses buffering for better performance:
 
 ```python
-from maif_sdk import CacheManager, EmbeddingCache, create_client
-import time
-import asyncio
+from maif.core import MAIFEncoder
 
-# Configure a multi-level cache manager with an in-memory L1 cache,
-# a Redis L2 cache, and a disk-based L3 cache, using an LRU eviction policy.
-cache_manager = CacheManager(
-    l1_cache="memory://256MB",
-    l2_cache="redis://localhost",
-    l3_cache="disk://1GB",
-    cache_policy="lru"
+# Configure buffer size
+encoder = MAIFEncoder(
+    agent_id="buffered-agent",
+    buffer_size=128 * 1024  # 128KB buffer
 )
 
-# Use a specialized cache for embeddings with quantization to reduce memory usage.
-embedding_cache = EmbeddingCache(
-    cache_size="512MB",
-    precompute_similar=True,
-    quantization="int8"
-)
+# Writes are buffered automatically
+for i in range(1000):
+    encoder.add_text_block(f"Item {i}")
 
-# Configure a client to use the defined cache manager and embedding cache.
-cached_client = create_client(
-    endpoint="https://api.maif.ai",
-    cache_manager=cache_manager,
-    embedding_cache=embedding_cache
-)
-
-async def low_latency_search():
-    # Assume the artifact 'search-optimized' already exists and is populated.
-    artifact = await cached_client.get_artifact("search-optimized")
-    
-    # The first search will be a cache miss, so it will take longer.
-    start_time = time.time()
-    results1 = await artifact.search("machine learning algorithms")
-    first_search_time = time.time() - start_time
-    
-    # The second search for the same query should be a cache hit, resulting in a faster response.
-    start_time = time.time()
-    results2 = await artifact.search("machine learning algorithms")
-    second_search_time = time.time() - start_time
-    
-    print(f"First search (cache miss): {first_search_time*1000:.2f}ms")
-    print(f"Second search (cache hit): {second_search_time*1000:.2f}ms")
-    # A speedup greater than 1x indicates caching is effective.
-    if second_search_time > 0:
-        print(f"Speedup: {first_search_time/second_search_time:.1f}x")
-
-# Run the asynchronous search example.
-asyncio.run(low_latency_search())
+# Buffer flushed on save
+encoder.save("buffered.maif")
 ```
 
-## Memory Optimization
+## Compression
 
-### 1. Efficient Data Structures
-
-Use memory-efficient data structures like `CompactArtifact` and `QuantizedEmbeddings` to reduce memory footprint. This code shows how to create and use these structures for memory-optimized processing.
+Enable compression to reduce file size and I/O:
 
 ```python
-from maif_sdk import CompactArtifact, QuantizedEmbeddings, create_client
-import asyncio
-import numpy as np
-from types import SimpleNamespace
+from maif.core import MAIFEncoder
 
-# Assume a client is already created.
-client = create_client()
-
-# Use a CompactArtifact which is optimized for memory by using
-# compression, quantization, and memory-mapping.
-compact_artifact = CompactArtifact(
-    client,
-    compression="zstd",
-    quantization="int8",
-    memory_mapping=True
+encoder = MAIFEncoder(
+    agent_id="compressed-agent",
+    enable_compression=True
 )
 
-# Mock data for demonstration purposes.
-sample_embeddings = [np.random.rand(128) for _ in range(100)]
-large_document_set = [SimpleNamespace(content=f"Document content {i}") for i in range(1000)]
-async def generate_embedding(content):
-    return np.random.rand(128)
-
-# Use QuantizedEmbeddings to reduce the memory usage of embedding vectors.
-quantized_embeddings = QuantizedEmbeddings(
-    precision="int8",  # Reduces float32 to int8, a 4x memory reduction.
-    calibration_data=sample_embeddings # Data used to learn the quantization scale.
-)
-
-async def memory_efficient_processing():
-    # Create a memory-optimized artifact.
-    artifact = await compact_artifact.create("memory-optimized")
-    
-    # Add data, which will be automatically compressed and quantized.
-    for document in large_document_set:
-        # The text content is automatically compressed using zstd.
-        text_id = await artifact.add_text_compressed(document.content)
-        
-        # Generate and then quantize the embedding before adding it.
-        embedding = await generate_embedding(document.content)
-        quantized_embedding = quantized_embeddings.quantize(embedding)
-        
-        await artifact.add_embedding(quantized_embedding, block_id=text_id)
-    
-    # Get statistics on memory usage to see the effect of optimizations.
-    memory_stats = await artifact.get_memory_stats()
-    print(f"Memory usage: {memory_stats.total_mb:.2f} MB")
-    print(f"Compression ratio: {memory_stats.compression_ratio:.2f}x")
-
-# Run the asynchronous memory-efficient processing example.
-asyncio.run(memory_efficient_processing())
+# Data is automatically compressed
+encoder.add_text_block("Large document content...")
+encoder.save("compressed.maif")
 ```
 
-## Benchmarking and Monitoring
-
-### 1. Performance Benchmarking
-
-Comprehensive performance testing:
+### Compression Manager
 
 ```python
-from maif_sdk import PerformanceBenchmark
-import time
+from maif.compression_manager import CompressionManager
 
-# Performance benchmark suite
-benchmark = PerformanceBenchmark(
-    client,
-    test_duration="60s",
-    warmup_duration="10s",
-    metrics=["throughput", "latency", "memory", "cpu"]
-)
+# Create compression manager
+compression = CompressionManager()
 
-async def run_performance_benchmark():
-    # Throughput benchmark
-    throughput_results = await benchmark.test_throughput(
-        operation="add_text",
-        batch_sizes=[100, 500, 1000, 2000],
-        concurrent_clients=[1, 5, 10, 20]
-    )
-    
-    # Latency benchmark
-    latency_results = await benchmark.test_latency(
-        operation="search",
-        query_types=["simple", "complex", "multi_modal"],
-        percentiles=[50, 90, 95, 99]
-    )
-    
-    # Generate performance report
-    report = benchmark.generate_report({
-        "throughput": throughput_results,
-        "latency": latency_results
-    })
-    
-    print("Performance Benchmark Results:")
-    print(f"Max Throughput: {report.max_throughput:.2f} MB/s")
-    print(f"P95 Latency: {report.p95_latency:.2f} ms")
+# Compress data
+compressed = compression.compress(large_data)
 
-await run_performance_benchmark()
+# Decompress when needed
+original = compression.decompress(compressed)
 ```
 
-## Best Practices
-
-### 1. Performance Design Patterns
-
-Implement proven performance patterns:
+### Embedding Compression
 
 ```python
-# Performance-optimized client configuration
-perf_client = create_client(
-    endpoint="https://api.maif.ai",
-    # Connection optimization
-    connection_pool_size=20,
-    keep_alive=True,
+from maif_api import create_maif
+
+maif = create_maif("embedding-agent")
+
+# Compress large embedding sets
+embeddings = [[0.1, 0.2, 0.3] for _ in range(10000)]
+maif.add_embeddings(embeddings, model_name="bert", compress=True)
+
+maif.save("compressed_embeddings.maif")
+```
+
+## Batch Processing
+
+Process data in efficient batches:
+
+```python
+from maif.batch_processor import BatchProcessor
+
+# Create batch processor
+processor = BatchProcessor(batch_size=100)
+
+# Process items in batches
+items = [f"document_{i}" for i in range(10000)]
+
+for batch in processor.process(items):
+    # Each batch has up to 100 items
+    for item in batch:
+        process(item)
+```
+
+### Stream Batch Processing
+
+```python
+from maif.batch_processor import StreamBatchProcessor
+
+# For streaming data
+processor = StreamBatchProcessor(
+    batch_size=100,
+    timeout=5.0  # Flush after 5 seconds
+)
+
+# Add items as they arrive
+for item in data_stream:
+    processor.add(item)
     
-    # Batching optimization
-    auto_batch=True,
+    if processor.is_ready():
+        batch = processor.get_batch()
+        process_batch(batch)
+
+# Process remaining
+final_batch = processor.flush()
+```
+
+### Parallel Processing
+
+```python
+from maif.batch_processor import DistributedBatchProcessor
+
+# Multi-worker processing
+processor = DistributedBatchProcessor(
     batch_size=1000,
-    batch_timeout="100ms",
-    
-    # Caching optimization
-    enable_caching=True,
-    cache_size="512MB",
-    cache_ttl="1h",
-    
-    # Compression optimization
-    compression="lz4",
-    compression_level=3,
-    
-    # Async optimization
-    async_mode=True,
-    max_concurrent_requests=50
+    num_workers=4
 )
 
-async def performance_best_practices():
-    artifact = await perf_client.create_artifact("best-practices")
-    
-    # 1. Batch operations when possible
-    batch_data = collect_batch_data(size=1000)
-    await artifact.add_batch(batch_data)
-    
-    # 2. Use async operations for I/O
-    search_tasks = [
-        artifact.search_async(query) 
-        for query in search_queries
-    ]
-    search_results = await asyncio.gather(*search_tasks)
-    
-    # 3. Cache frequently accessed data
-    cached_blocks = await artifact.get_blocks_cached(frequent_block_ids)
-
-await performance_best_practices()
+# Process with parallelism
+results = processor.process_parallel(items)
 ```
 
-## Troubleshooting
+## Streaming
 
-### Common Performance Issues
+For large files, use streaming operations:
 
-1. **High Latency**
-   ```python
-   # Diagnose and fix high latency
-   latency_analyzer = LatencyAnalyzer(client)
-   
-   bottlenecks = await latency_analyzer.identify_bottlenecks()
-   for bottleneck in bottlenecks:
-       if bottleneck.type == "network":
-           await client.optimize_network_settings()
-       elif bottleneck.type == "cache_miss":
-           await client.warm_cache(bottleneck.keys)
-   ```
+```python
+from maif.streaming import MAIFStreamWriter, MAIFStreamReader
 
-2. **Memory Issues**
-   ```python
-   # Memory leak detection and cleanup
-   memory_analyzer = MemoryAnalyzer(client)
-   
-   leaks = await memory_analyzer.detect_leaks()
-   if leaks:
-       await client.cleanup_memory()
-   ```
+# Write incrementally
+with MAIFStreamWriter("large.maif") as writer:
+    for i in range(100000):
+        writer.write_text_chunk(f"Document {i}")
+
+# Read without loading entire file
+with MAIFStreamReader("large.maif") as reader:
+    for block in reader.read_blocks():
+        process(block)
+```
+
+## Hot Buffer
+
+For high-throughput caching:
+
+```python
+from maif.hot_buffer import HotBuffer
+
+# Create hot buffer
+buffer = HotBuffer(max_size=1024 * 1024)  # 1MB
+
+# Cache frequently accessed data
+buffer.put("key1", data1)
+buffer.put("key2", data2)
+
+# Fast retrieval
+data = buffer.get("key1")
+```
+
+## Rate Limiting
+
+Control throughput in production:
+
+```python
+from maif.rate_limiter import RateLimiter, RateLimitConfig
+
+# Configure rate limiting
+config = RateLimitConfig(
+    requests_per_second=100,
+    burst_size=20
+)
+limiter = RateLimiter(config)
+
+# Use rate limiter
+with limiter:
+    perform_operation()
+```
+
+### Cost-Based Rate Limiting
+
+```python
+from maif.rate_limiter import CostBasedRateLimiter
+
+# Limit by cost
+limiter = CostBasedRateLimiter(max_cost_per_hour=1000)
+
+# Operations have different costs
+limiter.track_cost(operation="write", cost=1)
+limiter.track_cost(operation="search", cost=5)
+```
+
+## Metrics
+
+Track performance metrics:
+
+```python
+from maif.metrics_aggregator import (
+    MetricsAggregator,
+    initialize_metrics,
+    get_metrics
+)
+
+# Initialize metrics
+metrics = initialize_metrics(namespace="my-app")
+
+# Record metrics
+metrics.record("write_latency", 0.05)
+metrics.record("blocks_written", 100)
+
+# Get aggregated metrics
+summary = get_metrics()
+print(f"Average latency: {summary['write_latency_avg']}")
+```
+
+## Cost Tracking
+
+Track resource usage:
+
+```python
+from maif.cost_tracker import (
+    CostTracker,
+    initialize_cost_tracking,
+    with_cost_tracking
+)
+
+# Initialize tracking
+tracker = initialize_cost_tracking()
+
+# Track operation costs
+@with_cost_tracking
+def expensive_operation():
+    # Operation code
+    pass
+
+# Get cost summary
+costs = tracker.get_summary()
+```
+
+## Performance Tips
+
+### 1. Enable Memory Mapping for Large Files
+
+```python
+encoder = MAIFEncoder(agent_id="fast", enable_mmap=True)
+```
+
+### 2. Use Compression
+
+```python
+encoder = MAIFEncoder(agent_id="efficient", enable_compression=True)
+```
+
+### 3. Batch Operations
+
+```python
+# Don't write one at a time
+for item in items:
+    encoder.add_text_block(item)
+
+# Better: batch writes are efficient
+encoder.add_text_block(large_content)
+```
+
+### 4. Stream Large Files
+
+```python
+# Don't load entire file
+with MAIFStreamReader("huge.maif") as reader:
+    for block in reader.read_blocks():
+        process(block)
+```
+
+### 5. Use Parallel Processing
+
+```python
+from maif.batch_processor import DistributedBatchProcessor
+
+processor = DistributedBatchProcessor(num_workers=4)
+results = processor.process_parallel(items)
+```
+
+## Performance Benchmarks
+
+Typical performance characteristics:
+
+| Operation | Throughput | Latency |
+|-----------|------------|---------|
+| Write (text) | 100K blocks/sec | <1ms |
+| Write (binary) | 400+ MB/sec | <5ms |
+| Read (sequential) | 500+ MB/sec | <1ms |
+| Search (semantic) | <50ms | - |
+| Compression | 200+ MB/sec | <10ms |
+
+*Actual performance depends on hardware and configuration.*
+
+## Complete Example
+
+```python
+from maif.core import MAIFEncoder
+from maif.batch_processor import BatchProcessor
+from maif.metrics_aggregator import initialize_metrics
+import time
+
+# Initialize metrics
+metrics = initialize_metrics()
+
+# Create optimized encoder
+encoder = MAIFEncoder(
+    agent_id="optimized",
+    enable_mmap=True,
+    enable_compression=True,
+    buffer_size=256 * 1024
+)
+
+# Batch processor
+processor = BatchProcessor(batch_size=500)
+
+# Generate test data
+documents = [f"Document {i} with content..." for i in range(10000)]
+
+# Process in batches
+start = time.time()
+for batch in processor.process(documents):
+    for doc in batch:
+        encoder.add_text_block(doc)
+
+encoder.save("optimized.maif")
+elapsed = time.time() - start
+
+print(f"Processed {len(documents)} documents in {elapsed:.2f}s")
+print(f"Throughput: {len(documents)/elapsed:.0f} docs/sec")
+```
+
+## Available Performance Components
+
+| Component | Module | Purpose |
+|-----------|--------|---------|
+| `MAIFEncoder` | `maif.core` | Create files (mmap, buffer options) |
+| `MAIFStreamWriter` | `maif.streaming` | Streaming writes |
+| `MAIFStreamReader` | `maif.streaming` | Streaming reads |
+| `BatchProcessor` | `maif.batch_processor` | Batch processing |
+| `DistributedBatchProcessor` | `maif.batch_processor` | Parallel processing |
+| `CompressionManager` | `maif.compression_manager` | Data compression |
+| `HotBuffer` | `maif.hot_buffer` | High-speed caching |
+| `RateLimiter` | `maif.rate_limiter` | Throughput control |
+| `MetricsAggregator` | `maif.metrics_aggregator` | Performance metrics |
+| `CostTracker` | `maif.cost_tracker` | Resource tracking |
 
 ## Next Steps
 
-- Explore [Distributed Deployment](distributed.md) for scaling across clusters
-- Learn about [Monitoring & Observability](monitoring.md) for production monitoring
-- Check out [Real-time Processing](streaming.md) for streaming optimizations
-- See [Examples](../examples/) for performance-optimized applications 
+- **[Streaming →](/guide/streaming)** - Real-time processing
+- **[Architecture →](/guide/architecture)** - System design
+- **[API Reference →](/api/)** - Complete API documentation

@@ -40,6 +40,7 @@ class MAIF:
         """Initialize MAIF with simple configuration."""
         self.agent_id = agent_id
         self.enable_privacy = enable_privacy
+        self._name = f"{agent_id}_artifact"  # Default name
         
         # Initialize components
         self.privacy_engine = PrivacyEngine() if enable_privacy else None
@@ -52,6 +53,16 @@ class MAIF:
         
         # Track added content
         self.content_blocks = []
+    
+    @property
+    def name(self) -> str:
+        """Get the name of this MAIF artifact."""
+        return self._name
+    
+    @name.setter
+    def name(self, value: str):
+        """Set the name of this MAIF artifact."""
+        self._name = value
         
     @classmethod
     def load(cls, filepath: str) -> 'MAIF':
@@ -62,8 +73,35 @@ class MAIF:
         # Create instance and load decoder
         instance = cls()
         manifest_path = filepath.replace('.maif', '_manifest.json')
-        instance.decoder = MAIFDecoder(filepath, manifest_path)
+        if os.path.exists(manifest_path):
+            instance.decoder = MAIFDecoder(filepath, manifest_path)
+            # Populate content_blocks from decoder
+            instance._load_content_from_decoder()
+        else:
+            # Try loading without manifest
+            try:
+                instance.decoder = MAIFDecoder(filepath, filepath + ".manifest.json")
+                instance._load_content_from_decoder()
+            except FileNotFoundError:
+                # No manifest found, create minimal decoder
+                pass
         return instance
+    
+    def _load_content_from_decoder(self):
+        """Load content blocks from decoder into content_blocks list."""
+        if not hasattr(self, 'decoder') or self.decoder is None:
+            return
+            
+        for block in self.decoder.blocks:
+            # Extract block data
+            block_data = self.decoder.get_block_data(block.block_id)
+            content_entry = {
+                'block_id': block.block_id,
+                'block_type': block.block_type,
+                'metadata': block.metadata or {},
+                'data': block_data
+            }
+            self.content_blocks.append(content_entry)
     
     def add_text(self, text: str, title: str = None, language: str = "en", 
                  encrypt: bool = False, anonymize: bool = False) -> str:

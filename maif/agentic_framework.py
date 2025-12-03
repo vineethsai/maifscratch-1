@@ -18,10 +18,37 @@ from datetime import datetime
 from enum import Enum
 import os
 
-# Import MAIF components
-from maif_sdk.artifact import Artifact as MAIFArtifact
-from maif_sdk.client import MAIFClient
-from maif_sdk.types import ContentType, SecurityLevel, CompressionLevel
+# Import MAIF components (lazy import to avoid circular dependency)
+# maif_api imports from maif, which imports agentic_framework
+_maif_api_module = None
+
+def _get_maif_api():
+    """Lazy import to avoid circular dependency."""
+    global _maif_api_module
+    if _maif_api_module is None:
+        import maif_api
+        _maif_api_module = maif_api
+    return _maif_api_module
+
+def create_maif(agent_id: str = "default_agent", enable_privacy: bool = False):
+    """Create a MAIF instance (wrapper to avoid circular import)."""
+    return _get_maif_api().create_maif(agent_id, enable_privacy)
+
+def load_maif(filepath: str):
+    """Load a MAIF instance from file (wrapper to avoid circular import)."""
+    return _get_maif_api().MAIF.load(filepath)
+
+class MAIFArtifact:
+    """Proxy class for maif_api.MAIF to avoid circular imports."""
+    
+    @staticmethod
+    def load(filepath: str):
+        """Load a MAIF instance from file."""
+        return _get_maif_api().MAIF.load(filepath)
+    
+    def __new__(cls, *args, **kwargs):
+        """Create a new MAIF instance by delegating to maif_api."""
+        return create_maif(*args, **kwargs)
 
 # Import MAIF advanced features
 from .semantic_optimized import (
@@ -127,13 +154,8 @@ class MAIFAgent(ABC):
         self.aws_config = aws_config
         self.restore_from = restore_from
         
-        # Initialize MAIF client with optional AWS backends
-        if self.use_aws:
-            if not self.aws_config:
-                self.aws_config = AWSConfig()
-            self.maif_client = MAIFClient(use_aws=True, aws_config=self.aws_config)
-        else:
-            self.maif_client = MAIFClient()
+        # Initialize MAIF instance (AWS features removed in cleanup)
+        self.maif_instance = create_maif(agent_id=agent_id, enable_privacy=True)
         
         # Agent state
         self.state = AgentState.INITIALIZING
@@ -273,11 +295,7 @@ class MAIFAgent(ABC):
     
     def save_state(self):
         """Save agent state to MAIF."""
-        state_artifact = MAIFArtifact(
-            name=f"{self.agent_id}_state",
-            client=self.maif_client,
-            security_level=SecurityLevel.CONFIDENTIAL
-        )
+        state_artifact = create_maif(agent_id=f"{self.agent_id}_state", enable_privacy=True)
         
         state_data = {
             "agent_id": self.agent_id,
@@ -286,13 +304,12 @@ class MAIFAgent(ABC):
             "config": self.config
         }
         
-        state_artifact.add_data(
-            json.dumps(state_data).encode(),
-            title="Agent State",
-            data_type="agent_state"
+        state_artifact.add_text(
+            json.dumps(state_data),
+            title="Agent State"
         )
         
-        state_artifact.save(self.workspace_path / f"{self.agent_id}_state.maif")
+        state_artifact.save(str(self.workspace_path / f"{self.agent_id}_state.maif"))
     
     async def initialize(self):
         """Async initialization for components that require it."""
@@ -306,12 +323,7 @@ class MAIFAgent(ABC):
     def dump_complete_state(self):
         """Dump complete agent state to a MAIF file."""
         # Create comprehensive state artifact
-        state_artifact = MAIFArtifact(
-            name=f"{self.agent_id}_complete_dump",
-            client=self.maif_client,
-            security_level=SecurityLevel.L4_REGULATED,
-            enable_embeddings=True
-        )
+        state_artifact = create_maif(agent_id=f"{self.agent_id}_dump", enable_privacy=True)
         
         # Collect all agent data
         state_data = {
@@ -327,62 +339,30 @@ class MAIFAgent(ABC):
         }
         
         # Add state data
-        state_artifact.add_data(
-            json.dumps(state_data, indent=2).encode(),
-            title="Agent Final State",
-            data_type="agent_state"
+        state_artifact.add_text(
+            json.dumps(state_data, indent=2),
+            title="Agent Final State"
         )
         
-        # Add memory contents if exists
+        # Add memory reference if exists
         if self.memory_path.exists():
-            try:
-                memory_artifact = self.maif_client.read_content(str(self.memory_path))
-                state_artifact.add_text(
-                    f"Memory artifact ID: {memory_artifact.name}",
-                    title="Memory Reference"
-                )
-            except Exception as e:
-                logger.error(f"Failed to include memory: {e}")
+            state_artifact.add_text(
+                f"Memory path: {self.memory_path}",
+                title="Memory Reference"
+            )
         
-        # Add knowledge contents if exists
+        # Add knowledge reference if exists
         if self.knowledge_path.exists():
-            try:
-                knowledge_artifact = self.maif_client.read_content(str(self.knowledge_path))
-                state_artifact.add_text(
-                    f"Knowledge artifact ID: {knowledge_artifact.name}",
-                    title="Knowledge Reference"
-                )
-            except Exception as e:
-                logger.error(f"Failed to include knowledge: {e}")
-        
-        # Add AWS integration data if enabled
-        if self.use_aws:
-            aws_data = {
-                "aws_enabled": True,
-                "region": self.aws_config.credential_manager.region_name,
-                "services_used": []
-            }
-            
-            if self.xray_integration:
-                aws_data["services_used"].append("X-Ray")
-                aws_data["xray_metrics"] = self.xray_integration.get_metrics()
-            
-            if self.bedrock_integration:
-                aws_data["services_used"].append("Bedrock")
-                
-            if self.cloudwatch_logger:
-                aws_data["services_used"].append("CloudWatch")
-            
-            state_artifact.add_analysis(aws_data, title="AWS Integration Summary")
+            state_artifact.add_text(
+                f"Knowledge path: {self.knowledge_path}",
+                title="Knowledge Reference"
+            )
         
         # Save the complete dump
-        artifact_id = self.maif_client.write_content(state_artifact)
         dump_path = self.state_dump_path
+        state_artifact.save(str(dump_path))
         
-        # Also save locally
-        state_artifact.save(dump_path)
-        
-        logger.info(f"Agent state dumped to {dump_path} (ID: {artifact_id})")
+        logger.info(f"Agent state dumped to {dump_path}")
         return dump_path
     
     def shutdown(self):
@@ -423,30 +403,26 @@ class MAIFAgent(ABC):
         logger.info(f"Restoring agent state from: {dump_path}")
         
         try:
-            # Read the dump artifact
-            if self.use_aws and str(dump_path).startswith('s3://'):
-                # Load from S3
-                artifact = self.maif_client.read_content(str(dump_path))
-            else:
-                # Load from local file
-                dump_path = Path(dump_path)
-                if not dump_path.exists():
-                    raise FileNotFoundError(f"Dump file not found: {dump_path}")
-                
-                # Create temporary artifact to load the dump
-                temp_artifact = MAIFArtifact(
-                    name="temp_restore",
-                    client=self.maif_client
-                )
-                temp_artifact.load(dump_path)
-                artifact = temp_artifact
+            dump_path = Path(dump_path)
+            if not dump_path.exists():
+                raise FileNotFoundError(f"Dump file not found: {dump_path}")
             
-            # Extract state data
+            # Load the dump artifact
+            artifact = MAIFArtifact.load(str(dump_path))
+            
+            # Extract state data from content
             state_data = None
-            for content in artifact.get_content():
-                if content['metadata'].get('custom', {}).get('title') == 'Agent Final State':
-                    state_data = json.loads(content['data'].decode())
-                    break
+            for content in artifact.get_content_list():
+                # Try to parse as JSON state
+                if isinstance(content.get('data'), (bytes, str)):
+                    try:
+                        data_str = content['data'].decode() if isinstance(content['data'], bytes) else content['data']
+                        parsed = json.loads(data_str)
+                        if 'agent_id' in parsed and 'statistics' in parsed:
+                            state_data = parsed
+                            break
+                    except (json.JSONDecodeError, AttributeError):
+                        continue
             
             if not state_data:
                 raise ValueError("No agent state data found in dump")
@@ -464,30 +440,6 @@ class MAIFAgent(ABC):
             if hasattr(self.execution, 'execution_count'):
                 self.execution.execution_count = stats.get('total_executions', 0)
             
-            # Restore AWS metrics if available
-            if self.use_aws:
-                for content in artifact.get_content():
-                    if content['metadata'].get('custom', {}).get('title') == 'AWS Integration Summary':
-                        aws_data = json.loads(content['data'].decode())
-                        
-                        # Restore X-Ray metrics
-                        if self.xray_integration and 'xray_metrics' in aws_data:
-                            self.xray_integration.metrics.update(aws_data['xray_metrics'])
-                        
-                        logger.info(f"Restored AWS integration data: {aws_data['services_used']}")
-            
-            # Log restoration event if AWS is enabled
-            if self.use_aws and self.cloudwatch_logger:
-                self.cloudwatch_logger.log_compliance_event(
-                    event_type="AGENT_RESTORED",
-                    agent_id=self.agent_id,
-                    metadata={
-                        "restored_from": str(dump_path),
-                        "original_shutdown_time": state_data.get('shutdown_time'),
-                        "statistics": stats
-                    }
-                )
-            
             self.state = AgentState.IDLE
             logger.info(f"Agent state successfully restored. Statistics: {stats}")
             
@@ -497,24 +449,26 @@ class MAIFAgent(ABC):
     
     @classmethod
     def from_dump(cls, dump_path: Union[str, Path], workspace_path: Optional[str] = None,
-                  use_aws: bool = False, aws_config: Optional[AWSConfig] = None):
+                  use_aws: bool = False, aws_config: Optional[Any] = None):
         """Create an agent instance from a MAIF dump file."""
-        # Load the dump to get agent ID and config
-        temp_client = MAIFClient(use_aws=use_aws, aws_config=aws_config)
+        dump_path = Path(dump_path)
+        if not dump_path.exists():
+            raise FileNotFoundError(f"Dump file not found: {dump_path}")
         
-        if use_aws and str(dump_path).startswith('s3://'):
-            artifact = temp_client.read_content(str(dump_path))
-        else:
-            temp_artifact = MAIFArtifact(name="temp", client=temp_client)
-            temp_artifact.load(Path(dump_path))
-            artifact = temp_artifact
+        # Load the dump artifact
+        artifact = MAIFArtifact.load(str(dump_path))
         
         # Extract agent data
         state_data = None
-        for content in artifact.get_content():
-            if content['metadata'].get('custom', {}).get('title') == 'Agent Final State':
-                state_data = json.loads(content['data'].decode())
-                break
+        for content in artifact.get_content_list():
+            try:
+                data_str = content['data'].decode() if isinstance(content.get('data'), bytes) else content.get('data', '')
+                parsed = json.loads(data_str)
+                if 'agent_id' in parsed:
+                    state_data = parsed
+                    break
+            except (json.JSONDecodeError, AttributeError):
+                continue
         
         if not state_data:
             raise ValueError("No agent state data found in dump")
@@ -531,26 +485,21 @@ class MAIFAgent(ABC):
             agent_id=agent_id,
             workspace_path=workspace_path,
             config=config,
-            use_aws=use_aws,
-            aws_config=aws_config,
+            use_aws=False,  # AWS removed
             restore_from=dump_path
         )
 
 # Perception System
 class PerceptionSystem:
-    """Handles multimodal perception using MAIF with optional AWS enhancement."""
+    """Handles multimodal perception using MAIF."""
     
     def __init__(self, agent: MAIFAgent):
         self.agent = agent
         self.perception_count = 0
         
-        # Use Bedrock embeddings if AWS is enabled, otherwise local
-        if agent.use_aws and agent.bedrock_integration:
-            self.embedder = agent.bedrock_integration  # Use Bedrock for embeddings
-            self.use_bedrock = True
-        else:
-            self.embedder = OptimizedSemanticEmbedder()
-            self.use_bedrock = False
+        # Use local embeddings
+        self.embedder = OptimizedSemanticEmbedder()
+        self.use_bedrock = False
             
         self.hsc = HierarchicalSemanticCompression()
         self.csb = CryptographicSemanticBinding()
@@ -568,18 +517,12 @@ class PerceptionSystem:
     
     def _flush_perception_buffer(self, operations: List[Any]) -> None:
         """Flush perception buffer operations."""
-        # For now, just log the flush
         logger.info(f"Flushing {len(operations)} perception operations")
     
     async def process(self, input_data: Any, input_type: str) -> MAIFArtifact:
         """Process perception input into MAIF artifact."""
         # Create perception artifact
-        artifact = MAIFArtifact(
-            name=f"perception_{int(time.time() * 1000000)}",
-            client=self.agent.maif_client,
-            security_level=SecurityLevel.CONFIDENTIAL,
-            enable_embeddings=True
-        )
+        artifact = create_maif(agent_id=f"perception_{int(time.time() * 1000000)}", enable_privacy=True)
         
         # Process based on type
         if input_type == "text":
@@ -591,92 +534,50 @@ class PerceptionSystem:
         else:
             await self._process_generic(input_data, input_type, artifact)
         
-        # Save to agent's memory
-        if self.agent.use_aws:
-            # Save to S3 via AWS-enabled client
-            artifact_id = self.agent.maif_client.write_content(artifact)
-            logger.info(f"Perception saved to S3: {artifact_id}")
-        else:
-            # Save locally
-            artifact.save(self.agent.memory_path)
+        # Save locally
+        artifact.save(str(self.agent.memory_path))
         
         self.perception_count += 1
         return artifact
     
     async def _process_text(self, text: str, artifact: MAIFArtifact):
         """Process text perception."""
-        # Generate embedding
-        if self.use_bedrock:
-            # Use Bedrock for embeddings
-            embedding_vec = self.embedder.embed_text(text)
-        else:
-            # Use local embeddings
-            embeddings = self.embedder.embed_texts([text])
-            embedding_vec = embeddings[0].vector if embeddings else None
-        
-        # Log perception event if AWS is enabled
-        if self.agent.use_aws and self.agent.cloudwatch_logger:
-            self.agent.cloudwatch_logger.log_compliance_event(
-                event_type="PERCEPTION_TEXT",
-                agent_id=self.agent.agent_id,
-                metadata={
-                    "text_length": len(text),
-                    "has_embedding": embedding_vec is not None
-                }
-            )
+        # Generate embedding using local embedder
+        embeddings = self.embedder.embed_texts([text])
+        embedding_vec = embeddings[0].vector if embeddings else None
         
         # Add to artifact
-        artifact.add_text(
-            text,
-            title="Text Perception",
-            language="en"
-        )
+        artifact.add_text(text, title="Text Perception")
         
         if embedding_vec is not None:
+            # Convert to list if numpy array, otherwise use as-is
+            vec_list = embedding_vec.tolist() if hasattr(embedding_vec, 'tolist') else list(embedding_vec)
+            
             # Compress embedding
-            compressed = self.hsc.compress_embeddings([embedding_vec.tolist()])
+            compressed = self.hsc.compress_embeddings([vec_list])
             
             # Create semantic commitment
             commitment = self.csb.create_semantic_commitment(
-                embedding_vec.tolist(),
+                vec_list,
                 text
             )
-            
-            # Store metadata
-            artifact.custom_metadata.update({
-                "embedding_compressed": compressed,
-                "semantic_commitment": commitment,
-                "perception_type": "text"
-            })
     
     async def _process_image(self, image_data: bytes, artifact: MAIFArtifact):
         """Process image perception."""
-        artifact.add_image(
-            image_data,
-            title="Image Perception",
-            format="unknown"
-        )
-        
-        artifact.custom_metadata["perception_type"] = "image"
+        # Save image data to temp file and add
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.bin', delete=False) as f:
+            f.write(image_data)
+            artifact.add_image(f.name, title="Image Perception")
     
     async def _process_audio(self, audio_data: bytes, artifact: MAIFArtifact):
         """Process audio perception."""
-        artifact.add_data(
-            audio_data,
-            title="Audio Perception",
-            data_type="audio"
-        )
-        
-        artifact.custom_metadata["perception_type"] = "audio"
+        # Store audio as text description for now
+        artifact.add_text(f"Audio data: {len(audio_data)} bytes", title="Audio Perception")
     
     async def _process_generic(self, data: Any, data_type: str, artifact: MAIFArtifact):
         """Process generic perception."""
-        if isinstance(data, bytes):
-            artifact.add_data(data, title=f"{data_type} Perception", data_type=data_type)
-        else:
-            artifact.add_text(str(data), title=f"{data_type} Perception")
-        
-        artifact.custom_metadata["perception_type"] = data_type
+        artifact.add_text(str(data), title=f"{data_type} Perception")
 
 # Reasoning System
 class ReasoningSystem:
@@ -692,42 +593,23 @@ class ReasoningSystem:
     
     async def process(self, context: List[MAIFArtifact]) -> MAIFArtifact:
         """Apply reasoning to context artifacts."""
-        # Extract embeddings from context
-        embeddings = {}
+        # Extract content from context
         premises = []
         
-        for i, artifact in enumerate(context):
-            # Extract content
-            for content in artifact.get_content():
-                if content['content_type'] == 'text':
-                    text = content['data'].decode('utf-8')
-                    premises.append(text)
-                    
-                    # Get embedding if available
-                    if 'embedding_compressed' in artifact.custom_metadata:
-                        embeddings[f"artifact_{i}"] = np.array(
-                            artifact.custom_metadata['embedding_compressed']['reconstruction_info']['cluster_centers'][0]
-                        )
+        for artifact in context:
+            # Extract content using get_content_list()
+            for content in artifact.get_content_list():
+                if isinstance(content.get('data'), (bytes, str)):
+                    try:
+                        text = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                        premises.append(text)
+                    except (UnicodeDecodeError, AttributeError):
+                        pass
         
-        # Apply ACAM if multiple modalities
+        # Apply rule-based reasoning
         conclusions = []
         confidence = 0.5
         
-        if len(embeddings) > 1:
-            # Compute attention weights
-            attention_weights = self.acam.compute_attention_weights(embeddings)
-            
-            # Generate conclusions based on attention
-            for i, (mod1, mod2) in enumerate([(k1, k2) for k1 in embeddings for k2 in embeddings if k1 != k2]):
-                weight = attention_weights.normalized_weights[
-                    list(embeddings.keys()).index(mod1),
-                    list(embeddings.keys()).index(mod2)
-                ]
-                if weight > 0.5:
-                    conclusions.append(f"Strong correlation between {mod1} and {mod2} (weight: {weight:.2f})")
-                    confidence = max(confidence, weight)
-        
-        # Apply rule-based reasoning
         for premise in premises:
             if "error" in premise.lower():
                 conclusions.append("Error condition detected - investigation required")
@@ -737,28 +619,19 @@ class ReasoningSystem:
                 confidence = 0.8
         
         # Create reasoning artifact
-        artifact = MAIFArtifact(
-            name=f"reasoning_{int(time.time() * 1000000)}",
-            client=self.agent.maif_client,
-            security_level=SecurityLevel.CONFIDENTIAL
-        )
+        artifact = create_maif(agent_id=f"reasoning_{int(time.time() * 1000000)}", enable_privacy=True)
         
         reasoning_data = {
             "premises": premises,
             "conclusions": conclusions,
             "confidence": confidence,
-            "attention_weights": attention_weights.normalized_weights.tolist() if len(embeddings) > 1 else None,
             "timestamp": time.time()
         }
         
-        artifact.add_data(
-            json.dumps(reasoning_data, indent=2).encode(),
-            title="Reasoning Result",
-            data_type="reasoning"
-        )
+        artifact.add_text(json.dumps(reasoning_data, indent=2), title="Reasoning Result")
         
         # Save to knowledge base
-        artifact.save(self.agent.knowledge_path)
+        artifact.save(str(self.agent.knowledge_path))
         
         return artifact
 
@@ -774,11 +647,15 @@ class PlanningSystem:
         # Analyze context
         context_summary = []
         for artifact in context:
-            for content in artifact.get_content():
-                if content['content_type'] == 'text':
-                    context_summary.append(content['data'].decode('utf-8')[:100])
+            for content in artifact.get_content_list():
+                if isinstance(content.get('data'), (bytes, str)):
+                    try:
+                        text = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                        context_summary.append(text[:100])
+                    except (UnicodeDecodeError, AttributeError):
+                        pass
         
-        # Simple planning logic (in production, use more sophisticated planning)
+        # Simple planning logic
         steps = []
         
         if "analyze" in goal.lower():
@@ -798,11 +675,7 @@ class PlanningSystem:
             steps.append({"action": "generic_task", "parameters": {"goal": goal}})
         
         # Create plan artifact
-        artifact = MAIFArtifact(
-            name=f"plan_{int(time.time() * 1000000)}",
-            client=self.agent.maif_client,
-            security_level=SecurityLevel.CONFIDENTIAL
-        )
+        artifact = create_maif(agent_id=f"plan_{int(time.time() * 1000000)}", enable_privacy=True)
         
         plan_data = {
             "goal": goal,
@@ -812,13 +685,9 @@ class PlanningSystem:
             "created_at": time.time()
         }
         
-        artifact.add_data(
-            json.dumps(plan_data, indent=2).encode(),
-            title=f"Action Plan: {goal}",
-            data_type="action_plan"
-        )
+        artifact.add_text(json.dumps(plan_data, indent=2), title=f"Action Plan: {goal}")
         
-        artifact.save(self.agent.knowledge_path)
+        artifact.save(str(self.agent.knowledge_path))
         
         return artifact
 
@@ -844,13 +713,26 @@ class ExecutionSystem:
         """Execute a plan and return results."""
         # Extract plan
         plan_data = None
-        for content in plan_artifact.get_content():
-            if content['metadata'].get('custom', {}).get('data_type') == 'action_plan':
-                plan_data = json.loads(content['data'].decode('utf-8'))
-                break
+        content_list = plan_artifact.get_content_list()
+        
+        for content in content_list:
+            if isinstance(content.get('data'), (bytes, str)):
+                try:
+                    data_str = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                    parsed = json.loads(data_str)
+                    if 'goal' in parsed and 'steps' in parsed:
+                        plan_data = parsed
+                        break
+                except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+                    continue
         
         if not plan_data:
-            raise ValueError("No action plan found in artifact")
+            # Create a default plan if none found
+            logger.warning("No action plan found in artifact, creating default plan")
+            plan_data = {
+                "goal": "default execution",
+                "steps": [{"action": "generic_task", "parameters": {"note": "No explicit plan provided"}}]
+            }
         
         # Execute steps
         results = []
@@ -871,46 +753,19 @@ class ExecutionSystem:
             })
         
         # Create result artifact
-        artifact = MAIFArtifact(
-            name=f"execution_result_{int(time.time() * 1000000)}",
-            client=self.agent.maif_client,
-            security_level=SecurityLevel.CONFIDENTIAL
-        )
+        artifact = create_maif(agent_id=f"execution_{int(time.time() * 1000000)}", enable_privacy=True)
         
         execution_data = {
-            "plan_id": plan_artifact.name,
             "goal": plan_data['goal'],
             "results": results,
             "overall_status": "success" if all(r['result'].get('status') == 'success' for r in results) else "partial",
-            "execution_time": time.time() - plan_data['created_at']
+            "execution_time": time.time() - plan_data.get('created_at', time.time())
         }
         
-        artifact.add_data(
-            json.dumps(execution_data, indent=2).encode(),
-            title="Execution Results",
-            data_type="execution_result"
-        )
+        artifact.add_text(json.dumps(execution_data, indent=2), title="Execution Results")
         
-        # Save execution result
-        if self.agent.use_aws:
-            # Save to S3 via AWS-enabled client
-            artifact_id = self.agent.maif_client.write_content(artifact)
-            logger.info(f"Execution result saved to S3: {artifact_id}")
-            
-            # Log execution event
-            if self.agent.cloudwatch_logger:
-                self.agent.cloudwatch_logger.log_compliance_event(
-                    event_type="EXECUTION_COMPLETE",
-                    agent_id=self.agent.agent_id,
-                    metadata={
-                        "goal": plan_data['goal'],
-                        "status": execution_data['overall_status'],
-                        "execution_time": execution_data['execution_time']
-                    }
-                )
-        else:
-            # Save locally
-            artifact.save(self.agent.memory_path)
+        # Save locally
+        artifact.save(str(self.agent.memory_path))
         
         self.execution_count += 1
         return artifact
@@ -969,34 +824,29 @@ class LearningSystem:
         patterns = []
         
         for artifact in experience:
-            for content in artifact.get_content():
-                if content['metadata'].get('custom', {}).get('data_type') == 'execution_result':
-                    result_data = json.loads(content['data'].decode('utf-8'))
-                    
-                    # Learn from successful actions
-                    for result in result_data['results']:
-                        if result['result'].get('status') == 'success':
-                            patterns.append({
-                                "action": result['action'],
-                                "parameters": result['parameters'],
-                                "outcome": "success"
-                            })
+            for content in artifact.get_content_list():
+                if isinstance(content.get('data'), (bytes, str)):
+                    try:
+                        data_str = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                        result_data = json.loads(data_str)
+                        
+                        # Learn from successful actions
+                        if 'results' in result_data:
+                            for result in result_data['results']:
+                                if result.get('result', {}).get('status') == 'success':
+                                    patterns.append({
+                                        "action": result['action'],
+                                        "parameters": result['parameters'],
+                                        "outcome": "success"
+                                    })
+                    except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+                        continue
         
         # Update knowledge base
         if patterns:
-            knowledge_artifact = MAIFArtifact(
-                name=f"learned_patterns_{int(time.time() * 1000000)}",
-                client=self.agent.maif_client,
-                security_level=SecurityLevel.CONFIDENTIAL
-            )
-            
-            knowledge_artifact.add_data(
-                json.dumps(patterns, indent=2).encode(),
-                title="Learned Patterns",
-                data_type="knowledge_update"
-            )
-            
-            knowledge_artifact.save(self.agent.knowledge_path)
+            knowledge_artifact = create_maif(agent_id=f"patterns_{int(time.time() * 1000000)}", enable_privacy=True)
+            knowledge_artifact.add_text(json.dumps(patterns, indent=2), title="Learned Patterns")
+            knowledge_artifact.save(str(self.agent.knowledge_path))
             
             # Trigger optimization
             self.optimizer.optimize_for_workload("read_heavy")
@@ -1068,12 +918,15 @@ class MemorySystem:
     
     def _summarize_artifact(self, artifact: MAIFArtifact) -> str:
         """Create summary of artifact."""
-        summary_parts = [f"Artifact: {artifact.name}"]
+        summary_parts = [f"Artifact: {getattr(artifact, 'agent_id', 'unknown')}"]
         
-        for content in artifact.get_content():
-            if content['content_type'] == 'text':
-                text = content['data'].decode('utf-8')
-                summary_parts.append(text[:100] + "..." if len(text) > 100 else text)
+        for content in artifact.get_content_list():
+            if isinstance(content.get('data'), (bytes, str)):
+                try:
+                    text = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                    summary_parts.append(text[:100] + "..." if len(text) > 100 else text)
+                except (UnicodeDecodeError, AttributeError):
+                    pass
         
         return " | ".join(summary_parts)
     
@@ -1137,14 +990,18 @@ class AutonomousMAIFAgent(MAIFAgent):
     def _determine_goal(self, reasoning_artifact: MAIFArtifact) -> str:
         """Determine next goal based on reasoning."""
         # Extract conclusions
-        for content in reasoning_artifact.get_content():
-            if content['metadata'].get('custom', {}).get('data_type') == 'reasoning':
-                reasoning_data = json.loads(content['data'].decode('utf-8'))
-                
-                if "error" in str(reasoning_data.get('conclusions', [])):
-                    return "analyze error conditions"
-                elif reasoning_data.get('confidence', 0) < 0.5:
-                    return "optimize reasoning confidence"
+        for content in reasoning_artifact.get_content_list():
+            if isinstance(content.get('data'), (bytes, str)):
+                try:
+                    data_str = content['data'].decode('utf-8') if isinstance(content['data'], bytes) else content['data']
+                    reasoning_data = json.loads(data_str)
+                    
+                    if "error" in str(reasoning_data.get('conclusions', [])):
+                        return "analyze error conditions"
+                    elif reasoning_data.get('confidence', 0) < 0.5:
+                        return "optimize reasoning confidence"
+                except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+                    continue
         
         return "analyze current state"
 
@@ -1213,21 +1070,12 @@ class MAIFAgentConsortium:
         
         # Broadcast to all agents
         if all_patterns:
-            knowledge_artifact = MAIFArtifact(
-                name=f"shared_knowledge_{int(time.time() * 1000000)}",
-                client=MAIFClient(),
-                security_level=SecurityLevel.PUBLIC
-            )
-            
-            knowledge_artifact.add_data(
-                json.dumps(all_patterns, indent=2).encode(),
-                title="Shared Knowledge",
-                data_type="consortium_knowledge"
-            )
+            knowledge_artifact = create_maif(agent_id=f"shared_{int(time.time() * 1000000)}", enable_privacy=False)
+            knowledge_artifact.add_text(json.dumps(all_patterns, indent=2, default=str), title="Shared Knowledge")
             
             # Save to shared location
             shared_path = self.workspace_path / "shared_knowledge.maif"
-            knowledge_artifact.save(shared_path)
+            knowledge_artifact.save(str(shared_path))
     
     async def _coordinate_tasks(self):
         """Coordinate task distribution among agents."""
@@ -1339,16 +1187,10 @@ class MAIFAgentConsortium:
         agent = self.agents[agent_id]
         
         # Create task artifact
-        task_artifact = MAIFArtifact(
-            name=f"task_{task_info['id']}",
-            client=agent.maif_client,
-            security_level=SecurityLevel.SENSITIVE
-        )
-        
-        task_artifact.add_data(
-            json.dumps(task_info['task']).encode(),
-            title=f"Task from {task_info['source_agent']}",
-            data_type="consortium_task"
+        task_artifact = create_maif(agent_id=f"task_{task_info['id']}", enable_privacy=True)
+        task_artifact.add_text(
+            json.dumps(task_info['task']),
+            title=f"Task from {task_info['source_agent']}"
         )
         
         # Store in agent's working memory

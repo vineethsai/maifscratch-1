@@ -1,885 +1,527 @@
-# ACID Transactions
+# Data Integrity Patterns
 
-MAIF provides enterprise-grade ACID (Atomicity, Consistency, Isolation, Durability) transaction support for reliable data operations across distributed systems. This guide covers transaction management, consistency models, and enterprise deployment patterns.
+MAIF provides data integrity through cryptographic hashing, verification, and atomic file operations. This guide covers patterns for ensuring data reliability.
 
 ## Overview
 
-ACID transactions in MAIF ensure:
+MAIF ensures data integrity through:
 
-- **Atomicity**: All operations in a transaction succeed or fail together
-- **Consistency**: Data remains in a valid state before and after transactions
-- **Isolation**: Concurrent transactions don't interfere with each other
-- **Durability**: Committed transactions persist even after system failures
+- **Cryptographic Hash Chains**: Each block is linked by hash
+- **Digital Signatures**: Optional signing for authenticity
+- **Atomic Operations**: File-level atomicity
+- **Integrity Verification**: Built-in verification methods
 
-```mermaid
-graph TB
-    subgraph "ACID Transaction Architecture"
-        Transaction[Transaction Start]
-        
-        Transaction --> AtomicOps[Atomic Operations]
-        AtomicOps --> ConsistencyCheck[Consistency Check]
-        ConsistencyCheck --> IsolationControl[Isolation Control]
-        IsolationControl --> DurabilityGuard[Durability Guard]
-        
-        subgraph "Atomicity Layer"
-            AtomicOps --> WriteAheadLog[Write-Ahead Log]
-            AtomicOps --> RollbackMechanism[Rollback Mechanism]
-            AtomicOps --> TwoPhaseCommit[Two-Phase Commit]
-        end
-        
-        subgraph "Consistency Layer"
-            ConsistencyCheck --> SchemaValidation[Schema Validation]
-            ConsistencyCheck --> ConstraintChecking[Constraint Checking]
-            ConsistencyCheck --> ReferentialIntegrity[Referential Integrity]
-        end
-        
-        subgraph "Isolation Layer"
-            IsolationControl --> LockManager[Lock Manager]
-            IsolationControl --> MVCC[Multi-Version Concurrency Control]
-            IsolationControl --> ConflictDetection[Conflict Detection]
-        end
-        
-        subgraph "Durability Layer"
-            DurabilityGuard --> PersistentStorage[Persistent Storage]
-            DurabilityGuard --> Replication[Replication]
-            DurabilityGuard --> BackupSystems[Backup Systems]
-        end
-        
-        DurabilityGuard --> CommitSuccess[Commit Success]
-        DurabilityGuard --> RollbackFailure[Rollback on Failure]
-    end
-    
-    style Transaction fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style CommitSuccess fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style RollbackFailure fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-```
+## Integrity Verification
 
-## Transaction Management
-
-### 1. Basic Transactions
-
-Simple transaction operations. The following example demonstrates how to use a `Transaction` context manager to ensure that a series of operations (creating an artifact and adding blocks) are treated as a single, atomic unit.
+### Basic Integrity Check
 
 ```python
-from maif_sdk import create_client, Transaction
-import asyncio
-import numpy as np
+from maif_api import load_maif
 
-# Create a client with transaction support enabled in 'strict_acid' mode.
-client = create_client(
-    endpoint="https://api.maif.ai",
-    api_key="your-api-key",
-    transaction_mode="strict_acid"
-)
-
-# Mock image data for the example.
-document_image = np.random.randint(0, 256, (100, 100, 3), dtype=np.uint8)
-
-# This example shows a basic transaction that commits automatically on success.
-async def basic_transaction_example():
-    # The `async with` statement ensures the transaction is either committed or rolled back.
-    async with Transaction(client) as tx:
-        # 1. Create an artifact within the transaction scope.
-        artifact = await tx.create_artifact("transaction-demo")
-        
-        # 2. Add multiple blocks atomically. If any of these fail, the transaction rolls back.
-        text_id = await artifact.add_text("Important document")
-        image_id = await artifact.add_image(document_image)
-        
-        # 3. Add metadata to the artifact.
-        await artifact.add_metadata({
-            "document_type": "contract",
-            "status": "draft",
-            "created_by": "user123"
-        })
-        
-        # The transaction automatically commits here if no exceptions were raised.
-        
-    print("Transaction completed successfully")
-
-# Run the asynchronous transaction example.
-asyncio.run(basic_transaction_example())
-```
-
-### 2. Complex Multi-Artifact Transactions
-
-Coordinate operations across multiple artifacts within a single transaction. This is useful for maintaining referential integrity between related but separate data entities.
-
-```python
-import asyncio
-from maif_sdk import create_client, Transaction
-
-# Assume 'client' is already created from the previous example.
-
-async def multi_artifact_transaction():
-    # Use a 'SERIALIZABLE' isolation level to ensure the highest level of data integrity.
-    async with Transaction(client, isolation_level="SERIALIZABLE") as tx:
-        # 1. Create multiple artifacts that will be linked together.
-        user_artifact = await tx.create_artifact("user-profile")
-        document_artifact = await tx.create_artifact("user-documents")
-        analytics_artifact = await tx.create_artifact("user-analytics")
-        
-        # 2. Add data to the user profile artifact.
-        profile_id = await user_artifact.add_structured_data({
-            "user_id": "user123",
-            "name": "John Doe",
-            "email": "john@example.com",
-            "status": "active"
-        })
-        
-        # 3. Add a document related to the user.
-        doc_id = await document_artifact.add_text(
-            "User agreement document",
-            metadata={"user_id": "user123", "type": "agreement"}
-        )
-        
-        # 4. Create an explicit relationship between the user's profile and their document.
-        await tx.create_relationship(
-            source_artifact=user_artifact,
-            source_block=profile_id,
-            target_artifact=document_artifact,
-            target_block=doc_id,
-            relationship_type="owns"
-        )
-        
-        # 5. Update an analytics artifact with the new information.
-        await analytics_artifact.add_structured_data({
-            "user_id": "user123",
-            "documents_count": 1,
-            "last_activity": "2024-01-15T10:30:00Z"
-        })
-        
-        # All of the above operations will commit or roll back together.
-
-# Run the asynchronous multi-artifact transaction example.
-asyncio.run(multi_artifact_transaction())
-```
-
-## Consistency Models
-
-### 1. Strong Consistency
-
-Ensure immediate consistency across all operations. This model is ideal for use cases where data must be perfectly up-to-date across all replicas, such as financial transactions.
-
-```python
-from maif_sdk import create_client, Transaction
-import asyncio
-
-# This client is configured for strong consistency, reading from the primary
-# node and requiring a majority of nodes to acknowledge writes.
-strong_client = create_client(
-    endpoint="https://api.maif.ai",
-    consistency_model="strong",
-    read_preference="primary",
-    write_concern="majority"
-)
-
-async def strong_consistency_example():
-    async with Transaction(strong_client) as tx:
-        artifact = await tx.create_artifact("strong-consistency")
-        
-        # Write some critical data.
-        block_id = await artifact.add_text("Critical financial data")
-        
-        # An immediate read is guaranteed to see the write.
-        retrieved_block = await artifact.get_block(block_id)
-        assert retrieved_block.content == "Critical financial data"
-        
-        # Ensure the data is consistent across all replicas before proceeding.
-        await tx.ensure_global_consistency()
-        print("Data is now globally consistent.")
-
-# Run the asynchronous strong consistency example.
-asyncio.run(strong_consistency_example())
-```
-
-### 2. Eventual Consistency
-
-Optimize for performance and availability with eventual consistency. This model allows for temporary inconsistencies between replicas, which is suitable for less critical data like analytics.
-
-```python
-from maif_sdk import create_client, Transaction
-import asyncio
-
-# This client is configured for eventual consistency, with a timeout
-# to specify how long the system might be in an inconsistent state.
-eventual_client = create_client(
-    endpoint="https://api.maif.ai",
-    consistency_model="eventual",
-    consistency_timeout="5s"
-)
-
-async def eventual_consistency_example():
-    async with Transaction(eventual_client) as tx:
-        artifact = await tx.create_artifact("eventual-consistency")
-        
-        # Write data that doesn't need to be immediately consistent.
-        block_id = await artifact.add_text("High-volume analytics data")
-        
-        # In an eventually consistent system, you may need to wait for replicas to catch up.
-        await tx.wait_for_consistency(block_id, timeout="5s")
-        
-        # After waiting, the data is guaranteed to be consistent.
-        retrieved_block = await artifact.get_block(block_id)
-        assert retrieved_block is not None
-        print("Data has reached eventual consistency.")
-
-# Run the asynchronous eventual consistency example.
-asyncio.run(eventual_consistency_example())
-```
-
-### 3. Causal Consistency
-
-Maintain causal relationships between operations, ensuring that if one operation logically depends on another, the dependency is respected across replicas.
-
-```python
-from maif_sdk import create_client, Transaction
-import asyncio
-
-# This client is configured for causal consistency, using vector clocks
-# to track dependencies between operations.
-causal_client = create_client(
-    endpoint="https://api.maif.ai",
-    consistency_model="causal",
-    vector_clock=True
-)
-
-async def causal_consistency_example():
-    async with Transaction(causal_client) as tx:
-        artifact = await tx.create_artifact("causal-consistency")
-        
-        # The first operation creates a user.
-        user_id = await artifact.add_structured_data({
-            "user_id": "user123",
-            "name": "John Doe"
-        })
-        
-        # This second operation is causally dependent on the first.
-        # It will always see the user creation event before executing.
-        profile_id = await artifact.add_structured_data({
-            "user_id": "user123",
-            "preferences": {"theme": "dark"},
-            "depends_on": user_id  # This explicitly defines the causal link.
-        })
-        
-        # This function enforces that the operations are applied in the correct causal order.
-        await tx.enforce_causal_ordering([user_id, profile_id])
-        print("Causal ordering has been enforced.")
-
-# Run the asynchronous causal consistency example.
-asyncio.run(causal_consistency_example())
-```
-
-## Isolation Levels
-
-### 1. Read Uncommitted
-
-The `Read Uncommitted` isolation level provides the highest performance but the lowest level of data integrity. In this mode, one transaction can read data that has been modified by another transaction but has not yet been committed. This can lead to "dirty reads." It is suitable for applications where performance is critical and occasional inconsistent data is acceptable.
-
-```python
-from maif_sdk import create_client, Transaction, IsolationLevel
-import asyncio
-
-# This client is configured for Read Uncommitted isolation.
-client = create_client(
-    endpoint="https://api.maif.ai",
-    default_isolation_level=IsolationLevel.READ_UNCOMMITTED
-)
-
-async def read_uncommitted_example():
-    # In this transaction, we can read data that other transactions have modified
-    # but not yet committed.
-    async with Transaction(client) as tx:
-        # This read might retrieve a "dirty" value from another concurrent transaction.
-        value = await tx.get_value("some_key")
-        print(f"Read value: {value} (might be uncommitted)")
-
-# Run the asynchronous example.
-asyncio.run(read_uncommitted_example())
-```
-
-### 2. Read Committed
-
-Prevent dirty reads:
-
-```python
-async def read_committed_example():
-    async with Transaction(client, isolation_level="READ_COMMITTED") as tx:
-        artifact = await tx.create_artifact("read-committed")
-        
-        # Only reads committed data
-        # Prevents dirty reads but allows non-repeatable reads
-        committed_blocks = await artifact.search("stable data")
-        
-        # Data is guaranteed to be committed
-        for block in committed_blocks:
-            assert block.is_committed == True
-
-await read_committed_example()
-```
-
-### 3. Repeatable Read
-
-Ensure consistent reads within a transaction:
-
-```python
-async def repeatable_read_example():
-    async with Transaction(client, isolation_level="REPEATABLE_READ") as tx:
-        artifact = await tx.get_artifact("existing-artifact")
-        
-        # First read
-        first_read = await artifact.search("important data")
-        
-        # ... other operations ...
-        
-        # Second read will return the same results
-        # even if other transactions have committed changes
-        second_read = await artifact.search("important data")
-        
-        assert first_read == second_read  # Guaranteed to be the same
-
-await repeatable_read_example()
-```
-
-### 4. Serializable
-
-Highest isolation level:
-
-```python
-async def serializable_example():
-    async with Transaction(client, isolation_level="SERIALIZABLE") as tx:
-        artifact = await tx.create_artifact("serializable")
-        
-        # Complete isolation from other transactions
-        # Equivalent to serial execution
-        
-        # Complex operations that must be fully isolated
-        data = await artifact.search("sensitive data")
-        processed_data = await process_sensitive_data(data)
-        
-        await artifact.add_structured_data({
-            "processed_results": processed_data,
-            "processing_time": "2024-01-15T10:30:00Z"
-        })
-        
-        # No other transaction can interfere
-
-await serializable_example()
-```
-
-## Error Handling and Recovery
-
-### 1. Automatic Rollback
-
-Handle transaction failures gracefully:
-
-```python
-async def automatic_rollback_example():
+def verify_artifact(path: str) -> bool:
+    """Verify artifact integrity."""
     try:
-        async with Transaction(client) as tx:
-            artifact = await tx.create_artifact("rollback-demo")
-            
-            # Successful operations
-            text_id = await artifact.add_text("First document")
-            image_id = await artifact.add_image(sample_image)
-            
-            # This operation might fail
-            await artifact.add_structured_data(invalid_data)  # Raises exception
-            
-            # If we reach here, all operations commit
-            
-    except ValidationError as e:
-        # Transaction automatically rolled back
-        print(f"Transaction failed and rolled back: {e}")
+        artifact = load_maif(path)
+        is_valid = artifact.verify_integrity()
         
-        # All operations are undone
-        # artifact, text_id, and image_id don't exist
+        if is_valid:
+            print(f"✅ {path}: Integrity verified")
+        else:
+            print(f"❌ {path}: Integrity check failed")
+        
+        return is_valid
+    except Exception as e:
+        print(f"❌ {path}: Error - {e}")
+        return False
 
-await automatic_rollback_example()
+# Verify single artifact
+verify_artifact("document.maif")
 ```
 
-### 2. Manual Rollback
-
-Explicit transaction control:
+### Batch Verification
 
 ```python
-async def manual_rollback_example():
-    tx = Transaction(client)
-    await tx.begin()
+import os
+from maif_api import load_maif
+
+def verify_directory(directory: str) -> dict:
+    """Verify all artifacts in a directory."""
+    results = {
+        "total": 0,
+        "valid": 0,
+        "invalid": 0,
+        "errors": []
+    }
+    
+    for filename in os.listdir(directory):
+        if filename.endswith('.maif'):
+            results["total"] += 1
+            path = os.path.join(directory, filename)
+            
+            try:
+                artifact = load_maif(path)
+                if artifact.verify_integrity():
+                    results["valid"] += 1
+                else:
+                    results["invalid"] += 1
+                    results["errors"].append({
+                        "file": filename,
+                        "error": "Integrity check failed"
+                    })
+            except Exception as e:
+                results["invalid"] += 1
+                results["errors"].append({
+                    "file": filename,
+                    "error": str(e)
+                })
+    
+    return results
+
+# Verify all artifacts
+results = verify_directory("./artifacts")
+print(f"Valid: {results['valid']}/{results['total']}")
+```
+
+## Atomic Operations
+
+### Safe File Writing
+
+Write artifacts atomically to prevent corruption:
+
+```python
+import os
+import tempfile
+import shutil
+from maif_api import create_maif
+
+def atomic_save(artifact, path: str):
+    """Save artifact atomically using temp file."""
+    directory = os.path.dirname(path) or '.'
+    
+    # Write to temporary file first
+    fd, temp_path = tempfile.mkstemp(
+        suffix='.maif.tmp',
+        dir=directory
+    )
+    os.close(fd)
     
     try:
-        artifact = await tx.create_artifact("manual-rollback")
+        artifact.save(temp_path)
+        # Atomic rename
+        shutil.move(temp_path, path)
+    except Exception:
+        # Clean up on failure
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise
+
+# Usage
+artifact = create_maif("important-doc")
+artifact.add_text("Critical data")
+atomic_save(artifact, "important.maif")
+```
+
+### Transactional Updates
+
+Implement transaction-like behavior:
+
+```python
+import os
+import shutil
+from maif_api import create_maif, load_maif
+
+class ArtifactTransaction:
+    """Transaction-like updates for artifacts."""
+    
+    def __init__(self, path: str):
+        self.path = path
+        self.backup_path = f"{path}.backup"
+        self.active = False
+    
+    def begin(self):
+        """Start transaction by creating backup."""
+        if os.path.exists(self.path):
+            shutil.copy2(self.path, self.backup_path)
+        self.active = True
+    
+    def commit(self):
+        """Commit transaction by removing backup."""
+        if os.path.exists(self.backup_path):
+            os.remove(self.backup_path)
+        self.active = False
+    
+    def rollback(self):
+        """Rollback transaction by restoring backup."""
+        if os.path.exists(self.backup_path):
+            shutil.move(self.backup_path, self.path)
+        self.active = False
+    
+    def __enter__(self):
+        self.begin()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.rollback()
+        else:
+            self.commit()
+        return False
+
+# Usage with context manager
+with ArtifactTransaction("data.maif") as tx:
+    # Load and modify artifact
+    artifact = load_maif("data.maif") if os.path.exists("data.maif") else create_maif("data")
+    artifact.add_text("New content")
+    artifact.save("data.maif")
+    
+    # If anything fails, transaction rolls back automatically
+```
+
+## Signed Artifacts
+
+### Creating Signed Artifacts
+
+```python
+from maif.security import MAIFSigner, MAIFVerifier
+from maif_api import create_maif
+
+# Create signer for your agent/service
+signer = MAIFSigner(agent_id="trusted-service")
+
+# Create artifact
+artifact = create_maif("signed-document")
+artifact.add_text("Important content that must be authenticated")
+
+# Save with signature
+artifact.save("signed.maif", sign=True)
+
+print(f"Public key:\n{signer.get_public_key_pem()}")
+```
+
+### Verifying Signatures
+
+```python
+from maif.security import MAIFVerifier
+from maif.core import MAIFDecoder
+
+def verify_signed_artifact(path: str, expected_agent_id: str = None) -> dict:
+    """Verify artifact signature and provenance."""
+    result = {
+        "path": path,
+        "integrity": False,
+        "signature": False,
+        "agent_id": None
+    }
+    
+    try:
+        decoder = MAIFDecoder(path)
         
-        # Add some data
-        block_id = await artifact.add_text("Test data")
+        # Check hash chain integrity
+        result["integrity"] = True  # If no error, integrity is OK
         
-        # Check some condition
-        if not await validate_business_logic(block_id):
-            # Manually rollback
-            await tx.rollback()
-            print("Transaction rolled back due to business logic")
-            return
+        # Check manifest for signature info
+        manifest = decoder.get_manifest()
+        if manifest:
+            result["agent_id"] = manifest.get("agent_id")
+            result["signature"] = manifest.get("signature") is not None
         
-        # Commit if everything is OK
-        await tx.commit()
-        print("Transaction committed successfully")
+        # Verify agent if expected
+        if expected_agent_id and result["agent_id"] != expected_agent_id:
+            result["trusted"] = False
+        else:
+            result["trusted"] = result["signature"]
         
     except Exception as e:
-        # Rollback on any error
-        await tx.rollback()
-        print(f"Transaction rolled back due to error: {e}")
+        result["error"] = str(e)
     
-    finally:
-        await tx.close()
+    return result
 
-await manual_rollback_example()
+# Verify
+result = verify_signed_artifact("signed.maif", "trusted-service")
+print(f"Trusted: {result.get('trusted', False)}")
 ```
 
-### 3. Savepoints
+## Provenance Tracking
 
-Create intermediate checkpoints:
+### Record Provenance
 
 ```python
-async def savepoint_example():
-    async with Transaction(client) as tx:
-        artifact = await tx.create_artifact("savepoint-demo")
+from maif.security import MAIFSigner
+from maif_api import create_maif
+from datetime import datetime
+
+class ProvenanceTracker:
+    """Track provenance of artifact operations."""
+    
+    def __init__(self, agent_id: str):
+        self.signer = MAIFSigner(agent_id=agent_id)
+        self.entries = []
+    
+    def record_action(self, action: str, artifact_id: str, details: dict = None):
+        """Record a provenance entry."""
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "action": action,
+            "artifact_id": artifact_id,
+            "details": details or {}
+        }
         
-        # Initial operations
-        user_id = await artifact.add_structured_data({"user": "john"})
+        # Add provenance to signer
+        self.signer.add_provenance_entry(action, artifact_id)
+        self.entries.append(entry)
         
-        # Create savepoint
-        savepoint1 = await tx.create_savepoint("after_user")
+        return entry
+    
+    def get_chain(self) -> list:
+        """Get full provenance chain."""
+        return self.entries.copy()
+
+# Usage
+tracker = ProvenanceTracker("data-pipeline")
+
+# Track operations
+tracker.record_action("create", "doc-001", {"source": "user-upload"})
+tracker.record_action("transform", "doc-001", {"operation": "text-extraction"})
+tracker.record_action("validate", "doc-001", {"result": "passed"})
+
+# Get provenance
+for entry in tracker.get_chain():
+    print(f"{entry['timestamp']}: {entry['action']} on {entry['artifact_id']}")
+```
+
+## Consistency Patterns
+
+### Read-After-Write Consistency
+
+Ensure reads see recent writes:
+
+```python
+import os
+from maif_api import create_maif, load_maif
+
+class ConsistentStore:
+    """Store with read-after-write consistency."""
+    
+    def __init__(self, path: str):
+        self.path = path
+        os.makedirs(path, exist_ok=True)
+    
+    def write(self, name: str, content: str):
+        """Write and sync artifact."""
+        artifact = create_maif(name)
+        artifact.add_text(content)
         
+        file_path = os.path.join(self.path, f"{name}.maif")
+        artifact.save(file_path)
+        
+        # Force sync to disk
+        with open(file_path, 'rb') as f:
+            os.fsync(f.fileno())
+        
+        return file_path
+    
+    def read(self, name: str):
+        """Read artifact."""
+        file_path = os.path.join(self.path, f"{name}.maif")
+        return load_maif(file_path)
+
+# Usage
+store = ConsistentStore("./consistent_store")
+store.write("doc", "Content")
+
+# Immediate read will see the write
+doc = store.read("doc")
+```
+
+### Optimistic Concurrency
+
+Handle concurrent updates:
+
+```python
+import os
+import hashlib
+from maif_api import create_maif, load_maif
+
+class OptimisticStore:
+    """Store with optimistic concurrency control."""
+    
+    def __init__(self, path: str):
+        self.path = path
+        os.makedirs(path, exist_ok=True)
+    
+    def _get_version(self, file_path: str) -> str:
+        """Get file version (hash)."""
+        if not os.path.exists(file_path):
+            return None
+        
+        with open(file_path, 'rb') as f:
+            return hashlib.md5(f.read()).hexdigest()
+    
+    def load_with_version(self, name: str):
+        """Load artifact with version info."""
+        file_path = os.path.join(self.path, f"{name}.maif")
+        version = self._get_version(file_path)
+        artifact = load_maif(file_path)
+        return artifact, version
+    
+    def save_with_version(self, name: str, artifact, expected_version: str):
+        """Save only if version matches."""
+        file_path = os.path.join(self.path, f"{name}.maif")
+        current_version = self._get_version(file_path)
+        
+        if current_version != expected_version:
+            raise ConflictError(
+                f"Version mismatch: expected {expected_version}, "
+                f"found {current_version}"
+            )
+        
+        artifact.save(file_path)
+
+class ConflictError(Exception):
+    pass
+
+# Usage
+store = OptimisticStore("./optimistic_store")
+
+# Load with version
+artifact, version = store.load_with_version("shared-doc")
+
+# Modify
+artifact.add_text("Updated content")
+
+# Save with version check
+try:
+    store.save_with_version("shared-doc", artifact, version)
+except ConflictError:
+    print("Conflict detected! Reload and retry.")
+```
+
+## Data Validation
+
+### Schema Validation
+
+Validate artifact content:
+
+```python
+from maif_api import load_maif
+import json
+
+class ArtifactValidator:
+    """Validate artifact content."""
+    
+    def __init__(self, schema: dict):
+        self.schema = schema
+    
+    def validate(self, artifact) -> dict:
+        """Validate artifact against schema."""
+        result = {
+            "valid": True,
+            "errors": []
+        }
+        
+        contents = artifact.get_content_list()
+        
+        # Check required fields
+        if "required_types" in self.schema:
+            found_types = set(c.get("type") for c in contents)
+            for req_type in self.schema["required_types"]:
+                if req_type not in found_types:
+                    result["valid"] = False
+                    result["errors"].append(f"Missing required type: {req_type}")
+        
+        # Check minimum content
+        if "min_content_count" in self.schema:
+            if len(contents) < self.schema["min_content_count"]:
+                result["valid"] = False
+                result["errors"].append(
+                    f"Minimum {self.schema['min_content_count']} content items required"
+                )
+        
+        return result
+
+# Usage
+validator = ArtifactValidator({
+    "required_types": ["text"],
+    "min_content_count": 1
+})
+
+artifact = load_maif("document.maif")
+result = validator.validate(artifact)
+
+if not result["valid"]:
+    print(f"Validation errors: {result['errors']}")
+```
+
+## Recovery Procedures
+
+### Automatic Recovery
+
+```python
+import os
+import shutil
+from maif_api import load_maif
+
+class RecoveryManager:
+    """Manage artifact recovery."""
+    
+    def __init__(self, data_dir: str, backup_dir: str):
+        self.data_dir = data_dir
+        self.backup_dir = backup_dir
+    
+    def check_and_recover(self, name: str) -> bool:
+        """Check artifact and recover if corrupted."""
+        data_path = os.path.join(self.data_dir, f"{name}.maif")
+        backup_path = os.path.join(self.backup_dir, f"{name}.maif")
+        
+        # Check primary
         try:
-            # Risky operations
-            profile_id = await artifact.add_structured_data(risky_profile_data)
-            preferences_id = await artifact.add_structured_data(risky_preferences)
-            
-            # Create another savepoint
-            savepoint2 = await tx.create_savepoint("after_profile")
-            
-            # More risky operations
-            await artifact.add_structured_data(very_risky_data)
-            
-        except ValidationError:
-            # Rollback to savepoint2, keeping user and profile
-            await tx.rollback_to_savepoint(savepoint2)
-            print("Rolled back to after_profile savepoint")
-            
-        except DataError:
-            # Rollback to savepoint1, keeping only user
-            await tx.rollback_to_savepoint(savepoint1)
-            print("Rolled back to after_user savepoint")
+            artifact = load_maif(data_path)
+            if artifact.verify_integrity():
+                return True
+        except:
+            pass
         
-        # Transaction commits with whatever succeeded
-
-await savepoint_example()
-```
-
-## Performance Optimization
-
-### 1. Batch Operations
-
-Optimize transaction performance with batching:
-
-```python
-async def batch_transaction_example():
-    async with Transaction(client, batch_size=1000) as tx:
-        artifact = await tx.create_artifact("batch-operations")
+        # Primary is corrupted, try backup
+        print(f"Primary corrupted, attempting recovery: {name}")
         
-        # Prepare batch operations
-        batch_operations = []
-        
-        for i in range(10000):
-            operation = {
-                "type": "add_text",
-                "content": f"Document {i}",
-                "metadata": {"index": i, "batch": "bulk_import"}
-            }
-            batch_operations.append(operation)
-        
-        # Execute batch atomically
-        results = await artifact.execute_batch(batch_operations)
-        
-        print(f"Processed {len(results)} operations in single transaction")
-
-await batch_transaction_example()
-```
-
-### 2. Connection Pooling
-
-Manage database connections efficiently:
-
-```python
-# Configure connection pooling for transactions
-pool_client = create_client(
-    endpoint="https://api.maif.ai",
-    connection_pool={
-        "min_connections": 5,
-        "max_connections": 50,
-        "connection_timeout": "30s",
-        "idle_timeout": "300s"
-    }
-)
-
-async def pooled_transaction_example():
-    # Transactions use pooled connections automatically
-    async with Transaction(pool_client) as tx:
-        artifact = await tx.create_artifact("pooled-transaction")
-        
-        # Operations use connection from pool
-        await artifact.add_text("Efficient connection usage")
-        
-    # Connection returned to pool automatically
-
-await pooled_transaction_example()
-```
-
-### 3. Read-Only Transactions
-
-Optimize read-heavy workloads:
-
-```python
-async def read_only_transaction_example():
-    # Read-only transactions can use read replicas
-    async with Transaction(client, read_only=True) as tx:
-        artifact = await tx.get_artifact("existing-artifact")
-        
-        # Read operations are optimized
-        search_results = await artifact.search("query terms")
-        block_data = await artifact.get_block("block_id")
-        metadata = await artifact.get_metadata()
-        
-        # Can perform complex read operations
-        analytics = await artifact.analyze_content(
-            analysis_types=["sentiment", "topics", "entities"]
-        )
-        
-        # No write operations allowed in read-only transaction
-        # This would raise an exception:
-        # await artifact.add_text("new content")  # Error!
-
-await read_only_transaction_example()
-```
-
-## Advanced Features
-
-### 1. Nested Transactions
-
-Handle complex business logic with nested transactions:
-
-```python
-async def nested_transaction_example():
-    async with Transaction(client) as outer_tx:
-        artifact = await outer_tx.create_artifact("nested-transactions")
-        
-        # Outer transaction operations
-        user_id = await artifact.add_structured_data({"user": "john"})
-        
-        # Nested transaction for profile creation
-        async with outer_tx.nested_transaction() as inner_tx:
+        if os.path.exists(backup_path):
             try:
-                profile_data = await fetch_external_profile_data("john")
-                profile_id = await artifact.add_structured_data(profile_data)
-                
-                # Nested transaction commits to outer transaction
-                await inner_tx.commit()
-                
-            except ExternalAPIError:
-                # Nested transaction rolls back, outer continues
-                await inner_tx.rollback()
-                print("Profile creation failed, using default")
-                
-                # Create default profile in outer transaction
-                default_profile = {"user": "john", "profile": "default"}
-                profile_id = await artifact.add_structured_data(default_profile)
+                artifact = load_maif(backup_path)
+                if artifact.verify_integrity():
+                    shutil.copy2(backup_path, data_path)
+                    print(f"Recovered from backup: {name}")
+                    return True
+            except:
+                pass
         
-        # Outer transaction includes successful operations
-        await artifact.add_metadata({"user_id": user_id, "profile_id": profile_id})
-
-await nested_transaction_example()
-```
-
-### 2. Cross-System Transactions
-
-Coordinate with external systems:
-
-```python
-from maif_sdk import XATransaction  # Extended Architecture Transaction
-
-async def cross_system_transaction_example():
-    # Configure external systems
-    external_systems = [
-        {"type": "database", "connection": "postgresql://..."},
-        {"type": "message_queue", "connection": "amqp://..."},
-        {"type": "cache", "connection": "redis://..."}
-    ]
+        print(f"Recovery failed: {name}")
+        return False
     
-    async with XATransaction(client, external_systems) as xa_tx:
-        # MAIF operations
-        artifact = await xa_tx.create_artifact("cross-system")
-        maif_id = await artifact.add_text("Transaction data")
+    def recover_all(self) -> dict:
+        """Attempt recovery of all artifacts."""
+        results = {"recovered": 0, "failed": 0}
         
-        # External database operation
-        db_id = await xa_tx.execute_sql(
-            "INSERT INTO transactions (maif_id, data) VALUES (?, ?)",
-            (maif_id, "transaction data")
-        )
+        for filename in os.listdir(self.data_dir):
+            if filename.endswith('.maif'):
+                name = filename[:-5]
+                if self.check_and_recover(name):
+                    results["recovered"] += 1
+                else:
+                    results["failed"] += 1
         
-        # Message queue operation
-        await xa_tx.send_message(
-            queue="transaction_events",
-            message={"maif_id": maif_id, "db_id": db_id}
-        )
-        
-        # Cache operation
-        await xa_tx.cache_set(
-            key=f"transaction:{maif_id}",
-            value={"status": "committed", "db_id": db_id}
-        )
-        
-        # All systems commit together or rollback together
-
-await cross_system_transaction_example()
-```
-
-### 3. Long-Running Transactions
-
-Handle transactions that span extended time periods:
-
-```python
-async def long_running_transaction_example():
-    # Configure for long-running transaction
-    long_tx_client = create_client(
-        endpoint="https://api.maif.ai",
-        transaction_timeout="1h",  # 1 hour timeout
-        heartbeat_interval="60s",  # Keep alive every minute
-        checkpoint_interval="300s"  # Checkpoint every 5 minutes
-    )
-    
-    async with Transaction(long_tx_client) as tx:
-        artifact = await tx.create_artifact("long-running")
-        
-        # Process large dataset
-        dataset = await load_large_dataset()
-        
-        for i, batch in enumerate(dataset.batches()):
-            # Process batch
-            results = await process_batch(batch)
-            
-            # Add results to artifact
-            for result in results:
-                await artifact.add_structured_data(result)
-            
-            # Periodic checkpoint to prevent timeout
-            if i % 100 == 0:
-                await tx.checkpoint(f"processed_batch_{i}")
-                print(f"Checkpoint created at batch {i}")
-            
-            # Heartbeat to keep transaction alive
-            await tx.heartbeat()
-        
-        # Final commit after all processing
-
-await long_running_transaction_example()
-```
-
-## Monitoring and Observability
-
-### 1. Transaction Metrics
-
-Monitor transaction performance and health:
-
-```python
-from maif_sdk import TransactionMetrics
-
-# Enable transaction monitoring
-metrics = TransactionMetrics(client)
-
-async def monitored_transaction_example():
-    async with Transaction(client) as tx:
-        # Transaction is automatically monitored
-        artifact = await tx.create_artifact("monitored")
-        
-        # Add some operations
-        await artifact.add_text("Monitored operation 1")
-        await artifact.add_text("Monitored operation 2")
-        
-    # Get transaction metrics
-    tx_metrics = await metrics.get_transaction_metrics(tx.transaction_id)
-    
-    print(f"Transaction duration: {tx_metrics.duration}ms")
-    print(f"Operations count: {tx_metrics.operations_count}")
-    print(f"Bytes processed: {tx_metrics.bytes_processed}")
-    print(f"Lock wait time: {tx_metrics.lock_wait_time}ms")
-
-await monitored_transaction_example()
-
-# Get overall transaction statistics
-overall_stats = await metrics.get_overall_stats()
-print(f"Average transaction duration: {overall_stats.avg_duration}ms")
-print(f"Transaction success rate: {overall_stats.success_rate:.2%}")
-print(f"Deadlock rate: {overall_stats.deadlock_rate:.2%}")
-```
-
-### 2. Transaction Logging
-
-Comprehensive transaction logging:
-
-```python
-import logging
-from maif_sdk import TransactionLogger
-
-# Configure transaction logging
-tx_logger = TransactionLogger(
-    level=logging.INFO,
-    include_operations=True,
-    include_performance=True,
-    log_format="json"
-)
-
-async def logged_transaction_example():
-    async with Transaction(client, logger=tx_logger) as tx:
-        artifact = await tx.create_artifact("logged-transaction")
-        
-        # All operations are automatically logged
-        text_id = await artifact.add_text("Logged operation")
-        
-        # Manual log entries
-        await tx.log("Custom log entry", level="INFO")
-        
-        # Log business context
-        await tx.log_context({
-            "user_id": "user123",
-            "operation_type": "document_creation",
-            "business_unit": "finance"
-        })
-
-await logged_transaction_example()
-```
-
-### 3. Distributed Tracing
-
-Trace transactions across distributed systems:
-
-```python
-from maif_sdk import DistributedTracing
-import opentelemetry.trace as trace
-
-# Configure distributed tracing
-tracer = trace.get_tracer(__name__)
-distributed_tracing = DistributedTracing(tracer)
-
-async def traced_transaction_example():
-    with tracer.start_as_current_span("business_operation") as span:
-        async with Transaction(client, tracing=distributed_tracing) as tx:
-            span.set_attribute("transaction.id", tx.transaction_id)
-            
-            artifact = await tx.create_artifact("traced-transaction")
-            
-            # Operations are automatically traced
-            with tracer.start_as_current_span("add_document"):
-                text_id = await artifact.add_text("Traced document")
-                span.set_attribute("document.id", text_id)
-            
-            with tracer.start_as_current_span("add_metadata"):
-                await artifact.add_metadata({"traced": True})
-
-await traced_transaction_example()
+        return results
 ```
 
 ## Best Practices
 
-### 1. Transaction Design
-
-Design efficient transactions:
-
-```python
-# Good: Short transaction scope
-async def good_transaction_design():
-    # Prepare data outside transaction
-    processed_data = await prepare_data_outside_transaction()
-    
-    # Short transaction
-    async with Transaction(client) as tx:
-        artifact = await tx.create_artifact("efficient")
-        
-        # Quick operations only
-        for item in processed_data:
-            await artifact.add_structured_data(item)
-    
-    # Post-processing outside transaction
-    await post_process_results()
-```
-
-### 2. Error Recovery
-
-Implement robust error recovery:
-
-```python
-async def robust_error_recovery():
-    max_retries = 3
-    retry_delay = 1.0
-    
-    for attempt in range(max_retries):
-        try:
-            async with Transaction(client) as tx:
-                artifact = await tx.create_artifact("retry-demo")
-                
-                # Perform operations
-                await artifact.add_text("Important data")
-                
-                # Success - break out of retry loop
-                break
-                
-        except DeadlockError:
-            if attempt < max_retries - 1:
-                # Exponential backoff
-                await asyncio.sleep(retry_delay * (2 ** attempt))
-                print(f"Deadlock detected, retrying (attempt {attempt + 1})")
-                continue
-            else:
-                print("Max retries exceeded, giving up")
-                raise
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Transaction Timeout**
-   ```python
-   # Increase timeout for long operations
-   long_client = create_client(
-       endpoint="https://api.maif.ai",
-       transaction_timeout="300s"  # 5 minutes
-   )
-   ```
-
-2. **Deadlock Detection**
-   ```python
-   # Enable deadlock detection and logging
-   deadlock_client = create_client(
-       endpoint="https://api.maif.ai",
-       deadlock_detection=True,
-       deadlock_logging=True
-   )
-   ```
-
-3. **Performance Issues**
-   ```python
-   # Optimize transaction performance
-   perf_client = create_client(
-       endpoint="https://api.maif.ai",
-       batch_size=1000,
-       connection_pool_size=20,
-       read_preference="secondary"  # For read-heavy workloads
-   )
-   ```
+1. **Always verify integrity** after loading important artifacts
+2. **Use atomic saves** to prevent corruption during writes
+3. **Implement backups** for critical data
+4. **Sign artifacts** when authenticity matters
+5. **Track provenance** for audit requirements
 
 ## Next Steps
 
-- Explore [Performance Optimization](performance.md) for transaction tuning
-- Learn about [Distributed Deployment](distributed.md) for scaling ACID across clusters
-- Check out [Monitoring & Observability](monitoring.md) for transaction monitoring
-- See [Examples](../examples/) for complete ACID transaction applications 
+- **[Security Model →](/guide/security-model)** - Security features
+- **[Distributed →](/guide/distributed)** - Distributed patterns
+- **[API Reference →](/api/)** - Complete documentation

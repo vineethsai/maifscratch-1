@@ -1,370 +1,321 @@
 # Quick Start
 
-Get your first MAIF-powered AI agent running in under 5 minutes with this hands-on tutorial.
+Get up and running with MAIF in under 5 minutes.
 
-## Prerequisites
-
-- Python 3.8+ installed
-- 5 minutes of your time
-- Basic familiarity with Python
-
-## Step 1: Install MAIF
+## Installation
 
 ```bash
-pip install maif[full]
+# Clone and install
+git clone https://github.com/vineethsai/maifscratch-1.git
+cd maifscratch-1
+pip install -e ".[full]"
 ```
 
-## Step 2: Your First Agent
+## Your First MAIF File
 
-Create a new Python file called `my_first_agent.py`. This script initializes a new agent, creates a memory artifact, adds a piece of knowledge, and saves it to a file.
+### Using the Simple API
+
+The easiest way to create a MAIF file:
 
 ```python
-from maif_sdk import create_client, create_artifact
+from maif_api import create_maif
 
-# 1. Create a MAIF client to manage agents and artifacts.
-client = create_client("my-first-agent")
+# Create a new artifact
+maif = create_maif("my-agent")
 
-# 2. Create an artifact, which serves as your agent's persistent memory.
-memory = create_artifact("agent-memory", client)
+# Add some content
+maif.add_text("Hello, MAIF!", title="Greeting")
+maif.add_text("This is my first artifact.", title="Introduction")
 
-# 3. Add some initial knowledge to the agent's memory.
-# The content is encrypted by default to ensure privacy.
-memory.add_text(
-    "I am a helpful AI assistant created with MAIF. I can remember our conversations and learn from them.",
-    title="System Prompt", # Give the memory block a title.
-    encrypt=True         # Ensure this data is encrypted at rest.
+# Save it
+maif.save("hello.maif")
+print("Created hello.maif!")
+```
+
+### Load and Verify
+
+```python
+from maif_api import load_maif
+
+# Load existing artifact
+maif = load_maif("hello.maif")
+
+# Verify integrity
+if maif.verify_integrity():
+    print("✓ Integrity verified!")
+
+# List contents
+for block in maif.get_content_list():
+    print(f"  - {block.get('title', 'Untitled')} ({block['type']})")
+```
+
+## Adding Different Content Types
+
+### Text Content
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("content-agent")
+
+# Simple text
+maif.add_text("Plain text content")
+
+# Text with title
+maif.add_text("Document body here...", title="My Document")
+
+maif.save("text_demo.maif")
+```
+
+### Images
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("image-agent")
+
+# Add image from file
+maif.add_image("photo.jpg", title="My Photo")
+maif.add_image("diagram.png", title="Architecture Diagram")
+
+maif.save("images_demo.maif")
+```
+
+### Video
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("video-agent")
+
+# Add video file
+maif.add_video("presentation.mp4", title="Q4 Presentation")
+
+maif.save("video_demo.maif")
+```
+
+### Embeddings
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("embedding-agent")
+
+# Add pre-computed embeddings
+embeddings = [
+    [0.1, 0.2, 0.3, 0.4],  # First vector
+    [0.5, 0.6, 0.7, 0.8],  # Second vector
+]
+maif.add_embeddings(embeddings, model_name="custom-model", compress=True)
+
+maif.save("embeddings_demo.maif")
+```
+
+### Multimodal Content
+
+```python
+from maif_api import create_maif
+
+maif = create_maif("multimodal-agent")
+
+# Add multimodal content with cross-modal attention
+maif.add_multimodal({
+    "text": "A sunset over the mountains",
+    "description": "Nature photography from Colorado",
+    "tags": ["sunset", "mountains", "nature"]
+}, title="Mountain Sunset", use_acam=True)
+
+maif.save("multimodal_demo.maif")
+```
+
+## Privacy and Encryption
+
+### Enable Privacy Features
+
+```python
+from maif_api import create_maif
+
+# Create with privacy enabled
+maif = create_maif("secure-agent", enable_privacy=True)
+
+# Add encrypted content
+maif.add_text(
+    "Confidential: Annual budget is $1.5M",
+    title="Budget Info",
+    encrypt=True
 )
 
-# 4. Save the memory to a portable, secure `.maif` file.
-memory.save("my_agent_memory.maif")
-print("✅ Agent memory created and saved!")
+# Add with anonymization
+maif.add_text(
+    "Patient John Doe, SSN: 123-45-6789",
+    title="Patient Record",
+    encrypt=True,
+    anonymize=True  # PII will be masked
+)
+
+maif.save("secure_demo.maif")
+
+# Check privacy report
+report = maif.get_privacy_report()
+print(f"Privacy enabled: {report.get('privacy_enabled')}")
 ```
 
-Run it from your terminal:
+## Using the Core API
 
-```bash
-python my_first_agent.py
-```
+For more control, use the encoder/decoder directly:
 
-## Step 3: Add Conversation Memory
-
-This script defines a chat function that loads the agent's memory, adds the user's message and the agent's response, and then saves the updated memory.
+### MAIFEncoder
 
 ```python
-from maif_sdk import create_client, load_artifact
-import datetime
+from maif.core import MAIFEncoder
 
-def chat_with_agent(user_message: str):
-    # Load the agent's existing memory from the file.
-    try:
-        memory = load_artifact("my_agent_memory.maif")
-    except FileNotFoundError:
-        # If no memory file exists, create a new one.
-        client = create_client("my-first-agent")
-        memory = create_artifact("agent-memory", client)
-    
-    # Store the user's message with a timestamp.
-    memory.add_text(
-        f"User: {user_message}",
-        title="User Message",
-        encrypt=True, # Encrypt the user's message.
-        metadata={
-            "timestamp": datetime.datetime.now().isoformat(),
-            "type": "user_input"
-        }
-    )
-    
-    # Generate a simple response. In a real app, this would involve an LLM.
-    response = f"I understand you said: '{user_message}'. This conversation is now stored securely in my memory."
-    
-    # Store the agent's response with a timestamp.
-    memory.add_text(
-        f"Assistant: {response}",
-        title="Agent Response",
-        encrypt=True, # Encrypt the agent's response.
-        metadata={
-            "timestamp": datetime.datetime.now().isoformat(),
-            "type": "agent_response"
-        }
-    )
-    
-    # Save the updated memory back to the file.
-    memory.save("my_agent_memory.maif")
-    
-    return response
+# Create encoder
+encoder = MAIFEncoder(agent_id="core-demo")
 
-# A simple command-line interface to test the chat function.
-if __name__ == "__main__":
-    print("🤖 MAIF Agent Ready! Type 'quit' to exit.\\n")
-    
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() == 'quit':
-            break
-        
-        response = chat_with_agent(user_input)
-        print(f"Agent: {response}\\n")
+# Add text block with metadata
+block_id = encoder.add_text_block(
+    "Detailed content here",
+    metadata={
+        "author": "system",
+        "version": "1.0",
+        "tags": ["important"]
+    }
+)
+print(f"Created block: {block_id}")
+
+# Add binary content
+with open("image.png", "rb") as f:
+    encoder.add_binary_block(f.read(), metadata={"type": "image/png"})
+
+# Save
+encoder.save("core_demo.maif")
 ```
 
-## Step 4: Add Semantic Search
-
-This script demonstrates how to use MAIF's built-in semantic search to find relevant memories and generate a more context-aware response.
+### MAIFDecoder
 
 ```python
-from maif_sdk import create_client, load_artifact
+from maif.core import MAIFDecoder
 
-def smart_agent_with_search(user_message: str):
-    # Load the agent's memory.
-    memory = load_artifact("my_agent_memory.maif")
-    
-    # Search for memories that are semantically similar to the user's message.
-    relevant_memories = memory.search(
-        query=user_message,
-        top_k=3,  # Retrieve the top 3 most relevant results.
-        include_metadata=True # Include metadata in the results.
-    )
-    
-    # Create a context string from the content of the relevant memories.
-    context = "\\n".join([mem['content'] for mem in relevant_memories])
-    
-    # Store the new user message.
-    memory.add_text(
-        f"User: {user_message}",
-        title="User Message",
-        encrypt=True,
-        metadata={"timestamp": datetime.datetime.now().isoformat()}
-    )
-    
-    # Generate a response that acknowledges the context.
-    if relevant_memories:
-        response = f"Based on our previous conversations about similar topics, I can help you with: {user_message}"
-    else:
-        response = f"This is a new topic for us. Let me help you with: {user_message}"
-    
-    # Store the agent's contextual response.
-    memory.add_text(
-        f"Assistant: {response}",
-        title="Agent Response", 
-        encrypt=True,
-        metadata={"timestamp": datetime.datetime.now().isoformat()}
-    )
-    
-    memory.save("my_agent_memory.maif")
-    return response, relevant_memories
+# Open and read
+decoder = MAIFDecoder("core_demo.maif")
 
-# Example of how to test the semantic search functionality.
-if __name__ == "__main__":
-    # First, load the memory and add some sample data to create a knowledge base.
-    memory = load_artifact("my_agent_memory.maif")
-    
-    sample_topics = [
-        "I love machine learning and AI",
-        "Python programming is my favorite",
-        "I'm interested in data science",
-        "Tell me about neural networks"
-    ]
-    
-    for topic in sample_topics:
-        memory.add_text(topic, encrypt=True)
-    
-    memory.save("my_agent_memory.maif")
-    
-    # Now, test the search with a new query.
-    response, memories = smart_agent_with_search("Can you help me with Python?")
-    print(f"Response: {response}")
-    print(f"Found {len(memories)} relevant memories")
+# Read all blocks
+for block in decoder.read_blocks():
+    print(f"Block: {block.block_id}")
+    print(f"  Type: {block.block_type}")
+    print(f"  Metadata: {block.metadata}")
+
+# Get specific block types
+text_blocks = decoder.get_blocks_by_type("TEXT")
+print(f"Found {len(text_blocks)} text blocks")
 ```
 
-## Step 5: Add Privacy & Security
-
-This script shows how to configure a MAIF agent with enterprise-grade security and privacy features, including digital signatures, strong key derivation, and automated PII anonymization.
+## Digital Signatures
 
 ```python
-from maif_sdk import create_client, create_artifact
-from maif import PrivacyLevel, SecurityLevel
+from maif.security import MAIFSigner, MAIFVerifier
 
-def create_secure_agent():
-    # Configure the client with high security defaults.
-    client = create_client(
-        "secure-agent",
-        default_security_level=SecurityLevel.TOP_SECRET, # Set a high default security level.
-        enable_signing=True,  # Automatically sign all saved artifacts.
-        key_derivation_rounds=100000  # Use a high number of rounds for key derivation.
-    )
-    
-    # Create an artifact with specific privacy settings.
-    memory = create_artifact(
-        "secure-memory",
-        client,
-        privacy_level=PrivacyLevel.CONFIDENTIAL, # Classify the data as confidential.
-        enable_audit_trail=True  # Ensure every operation is recorded in an immutable audit trail.
-    )
-    
-    # Add sensitive data with a request for anonymization.
-    # MAIF will automatically detect and redact PII like names and SSNs.
-    memory.add_text(
-        "Customer John Smith (SSN: 123-45-6789) called about account issues",
-        title="Customer Service Log",
-        encrypt=True,
-        anonymize=True,  # Request PII anonymization for this block.
-        metadata={
-            "sensitivity": "high",
-            "compliance": "GDPR"
-        }
-    )
-    
-    # Save the artifact, which will be automatically signed due to the client setting.
-    signature = memory.save("secure_memory.maif", sign=True)
-    
-    # Verify the integrity of the artifact and review the audit trail.
-    integrity_report = memory.verify_integrity()
-    audit_trail = memory.get_audit_trail()
-    
-    print(f"✅ Secure memory created")
-    print(f"🔐 Signature: {signature[:16]}...")
-    print(f"🛡️  Integrity: {'✅ Valid' if integrity_report['valid'] else '❌ Invalid'}")
-    print(f"📋 Audit entries: {len(audit_trail)}")
-    
-    return memory
+# Create signer
+signer = MAIFSigner(agent_id="signer-demo")
 
-# Create and test the secure agent.
-secure_memory = create_secure_agent()
+# Sign data
+data = b"Important content"
+signature = signer.sign_data(data)
+
+# Add provenance
+signer.add_provenance_entry("create", "document-001")
+
+# Verify
+verifier = MAIFVerifier()
+public_key = signer.get_public_key_pem()
+is_valid = verifier.verify_signature(data, signature, public_key)
+print(f"Valid signature: {is_valid}")
 ```
 
-## Step 6: Multi-Modal Agent
-
-This script demonstrates how to create an agent that can handle various data types, including text and images.
+## Searching Content
 
 ```python
-from maif_sdk import create_client, create_artifact
-import base64
+from maif_api import load_maif
 
-def create_multimodal_agent():
-    client = create_client("multimodal-agent")
-    memory = create_artifact("multimodal-memory", client)
-    
-    # Add a text block as before.
-    text_id = memory.add_text(
-        "This agent can handle multiple data types",
-        title="Agent Description"
-    )
-    
-    # Add an image. Here, we simulate image data with a base64 encoded string.
-    # In a real application, you would load the image data from a file.
-    sample_image_data = b"fake_image_data_for_demo"
-    image_id = memory.add_image(
-        sample_image_data,
-        title="Sample Image",
-        format="png",
-        metadata={"width": 800, "height": 600}
-    )
-    
-    # Add structured data
-    data_id = memory.add_structured_data({
-        "user_preferences": {
-            "theme": "dark",
-            "language": "en",
-            "notifications": True
-        },
-        "usage_stats": {
-            "sessions": 42,
-            "avg_session_length": "15m"
-        }
-    }, title="User Profile")
-    
-    # Add embeddings directly
-    import numpy as np
-    sample_embedding = np.random.rand(384).astype(np.float32)
-    embedding_id = memory.add_embedding(
-        sample_embedding,
-        title="Custom Embedding",
-        metadata={"model": "custom", "dimension": 384}
-    )
-    
-    memory.save("multimodal_memory.maif")
-    
-    print(f"✅ Added text: {text_id}")
-    print(f"✅ Added image: {image_id}")
-    print(f"✅ Added data: {data_id}")
-    print(f"✅ Added embedding: {embedding_id}")
-    
-    return memory
+maif = load_maif("my_artifact.maif")
 
-# Create multimodal agent
-multimodal_memory = create_multimodal_agent()
+# Search for relevant content
+results = maif.search("machine learning", top_k=5)
+
+for result in results:
+    print(f"Found: {result['text'][:100]}...")
+    print(f"Score: {result.get('score', 0):.3f}")
 ```
 
-## What You've Built
+## Quick Functions
 
-Congratulations! You now have a fully functional AI agent with:
+For one-off operations:
 
-- **🧠 Persistent Memory**: Survives restarts and remembers everything
-- **🔍 Semantic Search**: Finds relevant information intelligently
-- **🔒 Privacy & Security**: Enterprise-grade encryption and signatures
-- **📊 Multi-Modal Support**: Handles text, images, structured data, and embeddings
-- **📋 Audit Trail**: Complete record of all operations
-- **⚡ High Performance**: Optimized for speed and efficiency
-
-## Next Steps
-
-Now that you have a working agent, explore these advanced features:
-
-### 1. **Performance Optimization**
 ```python
-# Enable high-performance features
-client = create_client(
-    "optimized-agent",
-    enable_mmap=True,           # Memory-mapped I/O
-    buffer_size=128*1024,       # Large write buffer
-    max_concurrent_writers=8,   # Parallel operations
-    enable_compression=True     # Automatic compression
+from maif_api import quick_text_maif, quick_multimodal_maif
+
+# Create text MAIF in one line
+quick_text_maif("Hello, World!", "hello.maif", title="Greeting")
+
+# Create multimodal MAIF in one line
+quick_multimodal_maif(
+    {"text": "Sunset photo", "tags": ["nature"]},
+    "photo.maif",
+    title="Sunset"
 )
 ```
 
-### 2. **Advanced Privacy**
-```python
-from maif import DifferentialPrivacy
+## Complete Example: Note Taking App
 
-# Add differential privacy
-privacy_engine = DifferentialPrivacy(epsilon=1.0)
-memory.add_text(
-    "Sensitive data",
-    privacy_engine=privacy_engine
-)
+```python
+from maif_api import create_maif, load_maif
+from datetime import datetime
+
+class NoteBook:
+    def __init__(self, name: str):
+        self.name = name
+        self.filename = f"{name}.maif"
+        self.maif = create_maif(f"notebook-{name}")
+    
+    def add_note(self, content: str, title: str = None):
+        """Add a new note."""
+        if title is None:
+            title = f"Note {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        self.maif.add_text(content, title=title)
+        print(f"Added: {title}")
+    
+    def save(self):
+        """Save the notebook."""
+        self.maif.save(self.filename)
+        print(f"Saved to {self.filename}")
+    
+    @classmethod
+    def open(cls, name: str):
+        """Open existing notebook."""
+        notebook = cls(name)
+        notebook.maif = load_maif(notebook.filename)
+        return notebook
+    
+    def list_notes(self):
+        """List all notes."""
+        for block in self.maif.get_content_list():
+            print(f"  • {block.get('title', 'Untitled')}")
+
+# Usage
+notebook = NoteBook("work")
+notebook.add_note("Remember to review the Q4 report", title="Task")
+notebook.add_note("Meeting with team at 3pm", title="Reminder")
+notebook.save()
+
+# Later...
+notebook = NoteBook.open("work")
+notebook.list_notes()
 ```
 
-### 3. **Novel AI Algorithms**
-```python
-from maif.semantic_optimized import AdaptiveCrossModalAttention
+## What's Next?
 
-# Use cutting-edge ACAM algorithm
-acam = AdaptiveCrossModalAttention(embedding_dim=384)
-attention_weights = acam.compute_attention_weights({
-    'text': text_embeddings,
-    'image': image_embeddings
-})
-```
-
-### 4. **Distributed Processing**
-```python
-from maif.distributed import MAIFCluster
-
-# Scale across multiple machines
-cluster = MAIFCluster(nodes=["node1", "node2", "node3"])
-distributed_memory = cluster.create_artifact("distributed-memory")
-```
-
-## Learn More
-
-- **[Core Concepts →](/guide/concepts)** - Understand MAIF architecture
-- **[API Reference →](/api/)** - Complete API documentation
-- **[Examples →](/examples/)** - Real-world use cases
-- **[Cookbook →](/cookbook/)** - Advanced patterns and recipes
-
-## Get Help
-
-- **GitHub**: [github.com/maif-ai/maif](https://github.com/maif-ai/maif)
-- **Discord**: [discord.gg/maif](https://discord.gg/maif)
-- **Documentation**: [maif.ai/docs](https://maif.ai/docs)
-
-Happy building with MAIF! 🚀 
+- **[Getting Started →](/guide/getting-started)** - Deeper dive into concepts
+- **[Security Model →](/guide/security-model)** - Understand security features
+- **[Privacy Framework →](/guide/privacy)** - Privacy and compliance
+- **[Examples →](/examples/)** - More complete examples
+- **[API Reference →](/api/)** - Full API documentation

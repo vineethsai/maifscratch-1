@@ -1,507 +1,604 @@
-# Security API Reference
+# Security API
 
-The MAIF Security module provides enterprise-grade security including digital signatures, tamper detection, key management, and security policies for data integrity and authenticity.
+MAIF provides comprehensive security features for protecting AI agent data, including digital signatures, encryption, access control, and provenance tracking.
 
 ## Overview
 
-Security features:
-- **Digital Signatures**: RSA, ECDSA, EdDSA with certificate management
-- **Tamper Detection**: Integrity verification and corruption detection
-- **Key Management**: Secure generation, storage, and rotation
-- **Security Policies**: Configurable levels and compliance frameworks
-- **Monitoring**: Security event logging and threat detection
-
 ```mermaid
 graph TB
-    subgraph "Security Engine"
-        Security[Security Engine]
-        
-        subgraph "Core Features"
-            Signing[Digital Signatures]
-            Verification[Verification]
-            KeyMgmt[Key Management]
-            TamperDetection[Tamper Detection]
-        end
-        
-        subgraph "Policies & Monitoring"
-            Policies[Security Policies]
-            Audit[Audit Logging]
-            Threats[Threat Detection]
-        end
+    subgraph "Security Layer"
+        SM[SecurityManager]
+        Signer[MAIFSigner]
+        Verifier[MAIFVerifier]
+        AC[AccessController]
+        ACM[AccessControlManager]
     end
     
-    Security --> Signing
-    Security --> Verification
-    Security --> KeyMgmt
-    Security --> TamperDetection
+    SM --> Signer
+    SM --> Verifier
+    SM --> ACM
     
-    Security --> Policies
-    Security --> Audit
-    Security --> Threats
+    subgraph "Capabilities"
+        Sign[Digital Signatures]
+        Verify[Signature Verification]
+        Encrypt[Encryption]
+        Access[Access Control]
+        Prov[Provenance]
+    end
     
-    style Security fill:#3c82f6,stroke:#1e40af,stroke-width:3px,color:#fff
-    style Policies fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    Signer --> Sign
+    Signer --> Prov
+    Verifier --> Verify
+    SM --> Encrypt
+    AC --> Access
+    ACM --> Access
 ```
 
 ## Quick Start
 
-This example provides a brief overview of the `SecurityEngine`'s core functionality: creating a key, signing data, verifying a signature, and applying a security policy.
-
 ```python
-from maif.security import SecurityEngine, SecurityLevel
+from maif.security import SecurityManager, MAIFSigner, MAIFVerifier, AccessController
 
-# Create a default security engine.
-security = SecurityEngine()
+# Create security manager
+security = SecurityManager(use_kms=False, require_encryption=False)
 
-# Generate a 2048-bit RSA key for signing.
-signing_key = security.generate_key("RSA", key_size=2048)
+# Sign data
+signature = security.create_signature(b"Important data")
 
-# Sign a piece of data to create a digital signature.
-data = b"Important document"
-signature = security.sign(data, signing_key)
+# Encrypt data
+encrypted = security.encrypt_data(b"Sensitive information")
+decrypted = security.decrypt_data(encrypted)
 
-# Verify the signature to ensure the data is authentic and has not been tampered with.
-is_valid = security.verify(data, signature, signing_key.public_key)
-
-# Apply a security policy to a piece of data to enforce security rules.
-secured = security.apply_security_policy(
-    data=sensitive_data,
-    level=SecurityLevel.CONFIDENTIAL,
-    require_signature=True
-)
+# Access control
+security.access_control.grant_permission("user-1", "block-123", "read")
+if security.access_control.check_access("user-1", "block-123", "read"):
+    print("Access granted")
 ```
 
-## Constructor & Configuration
+## SecurityManager
 
-The `SecurityEngine` constructor allows you to configure its behavior for key management, algorithms, policies, and monitoring.
+The main security manager class that coordinates signing, encryption, and access control.
+
+### Constructor
 
 ```python
-security = SecurityEngine(
-    # --- Security Settings ---
-    default_security_level=SecurityLevel.INTERNAL, # Set the default security level for operations.
-    require_signatures=True, # Require signatures for all relevant operations by default.
-    enable_tamper_detection=True, # Enable tamper detection features by default.
-    
-    # --- Key Management ---
-    key_storage_backend="secure_enclave", # The default backend for storing keys (e.g., HSM, secure enclave).
-    key_rotation_policy="90_days", # The default policy for key rotation.
-    
-    # --- Algorithms ---
-    default_signature_algorithm="RSA-PSS", # The default digital signature algorithm.
-    hash_algorithm="SHA-256", # The default hash algorithm for hashing operations.
-    
-    # --- Policies ---
-    strict_policy_enforcement=True, # Fail operations that violate security policies.
-    
-    # --- Monitoring ---
-    audit_all_operations=True, # Audit all security-related operations.
-    enable_threat_detection=True, # Enable automated threat detection.
-    
-    # --- Performance ---
-    parallel_verification=True, # Use multiple threads to verify signatures in parallel.
-    signature_cache_size=10000 # The number of signatures to cache for faster verification.
-)
+class SecurityManager:
+    def __init__(
+        self,
+        use_kms: bool = True,
+        kms_key_id: Optional[str] = None,
+        region_name: str = "us-east-1",
+        require_encryption: bool = True
+    ):
+        """
+        Initialize SecurityManager.
+
+        Args:
+            use_kms: Enable AWS KMS for encryption (requires boto3)
+            kms_key_id: KMS key ID for encryption operations
+            region_name: AWS region for KMS
+            require_encryption: Raise error if encryption fails
+        """
 ```
 
-## Digital Signatures
+### Methods
 
-### Key Generation
+#### create_signature
 
-#### `generate_key(algorithm, **options) -> SigningKey`
-
-Generates a new signing key using the specified algorithm.
+Create a digital signature for data.
 
 ```python
-# Generate a 2048-bit RSA key.
-rsa_key = security.generate_key(
-    algorithm="RSA",
-    key_size=2048, # The size of the key in bits.
-    key_id="doc-signing-key", # A unique identifier for the key.
-    hardware_backed=True, # If True, the key will be generated and stored in a hardware security module (HSM).
-    store_securely=True # Automatically store the generated key in the configured key storage backend.
-)
+def create_signature(self, data: bytes) -> str:
+    """
+    Create digital signature.
 
-# Generate an ECDSA key using the P-256 curve.
-ecdsa_key = security.generate_key(
-    algorithm="ECDSA",
-    curve="P-256", # The elliptic curve to use.
-    key_id="fast-signing-key"
-)
+    Args:
+        data: Data to sign
 
-# Generate an EdDSA key using the Ed25519 curve.
-eddsa_key = security.generate_key(
-    algorithm="EdDSA",
-    curve="Ed25519", # A modern and secure elliptic curve.
-    key_id="modern-key"
-)
+    Returns:
+        Base64-encoded signature
+    """
 ```
 
-### Signing Operations
+#### verify_signature
 
-#### `sign(data, signing_key, **options) -> Signature`
-
-Signs a piece of data with a private key to create a digital signature.
+Verify a digital signature.
 
 ```python
-# Sign a document with default settings.
-signature = security.sign(document, signing_key)
+def verify_signature(
+    self,
+    data: bytes,
+    signature: str,
+    public_key_pem: str
+) -> bool:
+    """
+    Verify digital signature.
 
-# Sign a document with advanced options.
-signature = security.sign(
-    data=document,
-    signing_key=signing_key,
-    algorithm="RSA-PSS", # Override the default signature algorithm.
-    hash_algorithm="SHA-256", # Override the default hash algorithm.
-    include_timestamp=True, # Include a trusted timestamp in the signature.
-    include_certificate_chain=True, # Embed the certificate chain in the signature.
-    signing_purpose="document_approval", # The purpose of the signature, for auditing.
-    custom_attributes={"department": "legal"} # Add custom attributes to the signature metadata.
-)
+    Args:
+        data: Original data
+        signature: Base64-encoded signature
+        public_key_pem: PEM-encoded public key
+
+    Returns:
+        True if signature is valid
+    """
 ```
 
-#### `sign_detached(data, signing_key, **options) -> DetachedSignature`
+#### encrypt_data
 
-Creates a detached signature, which is stored separately from the data. This is useful for large files.
+Encrypt data using FIPS-compliant AES-256-GCM.
 
 ```python
-# Create a detached signature for a large file.
-detached_sig = security.sign_detached(
-    data=large_file,
-    signing_key=signing_key,
-    output_format="PKCS7", # The format of the detached signature.
-    base64_encode=True # Base64-encode the signature for easy transport.
-)
+def encrypt_data(self, data: bytes) -> bytes:
+    """
+    Encrypt data.
+
+    Args:
+        data: Data to encrypt
+
+    Returns:
+        Encrypted data with metadata header
+
+    Raises:
+        ValueError: If data is empty
+        RuntimeError: If encryption fails and require_encryption is True
+    """
 ```
 
-### Verification Operations
+#### decrypt_data
 
-#### `verify(data, signature, public_key, **options) -> VerificationResult`
-
-Verifies a digital signature to ensure the data's authenticity and integrity.
+Decrypt data that was encrypted with `encrypt_data`.
 
 ```python
-# Perform a simple verification.
-is_valid = security.verify(document, signature, public_key)
+def decrypt_data(self, data: bytes) -> bytes:
+    """
+    Decrypt data.
 
-# Perform an advanced verification with a detailed result object.
-verification = security.verify(
-    data=document,
-    signature=signature,
-    public_key=public_key,
-    strict_verification=True, # Perform a strict verification of all parameters.
-    check_certificate_chain=True, # Validate the full certificate chain.
-    verify_timestamp=True, # Verify that the signature's timestamp is valid.
-    require_trusted_ca=True # Require that the certificate be issued by a trusted CA.
-)
+    Args:
+        data: Encrypted data with metadata header
 
-# Check the verification result.
-if verification.is_valid:
-    print(f"Signer: {verification.signer_info.common_name}")
-    print(f"Signed at: {verification.signing_time}")
-else:
-    for error in verification.errors:
-        print(f"Error: {error.description}")
+    Returns:
+        Decrypted data
+
+    Raises:
+        ValueError: If data is empty or invalid
+        RuntimeError: If decryption fails
+    """
 ```
 
-## Tamper Detection
+#### validate_integrity
 
-### Integrity Verification
-
-#### `generate_integrity_hash(data, **options) -> IntegrityHash`
-
-Generates a secure hash of the data to be used for later integrity verification.
+Validate data integrity using SHA-256 hash.
 
 ```python
-# Generate a secure integrity hash for a document.
-integrity_hash = security.generate_integrity_hash(
-    data=sensitive_document,
-    algorithm="SHA-256", # The hash algorithm to use.
-    include_timestamp=True, # Include a timestamp in the hash.
-    use_merkle_tree=True, # Use a Merkle tree for efficient verification of large files.
-    chunk_size=64*1024, # The chunk size for the Merkle tree.
-    bind_to_context=True # Bind the hash to the current context (e.g., user, session).
-)
+def validate_integrity(self, data: bytes, expected_hash: str) -> bool:
+    """
+    Validate data integrity.
+
+    Args:
+        data: Data to validate
+        expected_hash: Expected SHA-256 hash
+
+    Returns:
+        True if hash matches
+    """
 ```
 
-#### `verify_integrity(data, integrity_hash, **options) -> IntegrityResult`
+#### log_security_event
 
-Verifies the integrity of a piece of data by comparing it to a previously generated integrity hash.
+Log a security event for auditing.
 
 ```python
-# Verify the integrity of a document against its stored hash.
-result = security.verify_integrity(
-    data=current_document,
-    integrity_hash=stored_hash,
-    detect_modifications=True, # Detect if any modifications have been made.
-    identify_changed_regions=True # Identify the specific regions of the data that have changed.
-)
+def log_security_event(self, event_type: str, details: dict):
+    """
+    Log security event.
 
-if not result.is_intact:
-    print("TAMPERING DETECTED!")
-    for change in result.detected_changes:
-        print(f"Change at offset {change.offset}")
+    Args:
+        event_type: Type of event (e.g., "encrypt_request", "access_denied")
+        details: Event details dictionary
+    """
 ```
 
-## Security Policies
+#### get_security_status
 
-### Policy Definition
-
-Define reusable security policies to enforce consistent rules across your application.
+Get current security status.
 
 ```python
-# Use one of the predefined policies.
-confidential_policy = SecurityPolicy.CONFIDENTIAL
+def get_security_status(self) -> dict:
+    """
+    Get security status.
 
-# Create a custom security policy for a specific use case.
-custom_policy = SecurityPolicy(
-    name="Financial Security Policy",
-    level=SecurityLevel.RESTRICTED, # The security level of the policy.
-    
-    # --- Signature Requirements ---
-    require_digital_signature=True, # Mandate that data under this policy be signed.
-    minimum_signature_strength="RSA-2048", # The minimum required strength for signatures.
-    require_certificate_chain=True, # Mandate that signatures include a certificate chain.
-    
-    # --- Integrity Requirements ---
-    require_integrity_hash=True, # Mandate that data have an integrity hash.
-    enable_tamper_detection=True, # Enable tamper detection for data under this policy.
-    
-    # --- Access Control ---
-    authorized_roles=["analyst", "manager"], # The user roles authorized to access this data.
-    require_multi_factor_auth=True, # Require MFA for access.
-    
-    # --- Compliance ---
-    compliance_frameworks=["SOX", "PCI-DSS"], # The compliance frameworks associated with this policy.
-    audit_all_access=True # Mandate that all access be audited.
-)
+    Returns:
+        Dictionary with:
+            - security_enabled: bool
+            - events_logged: int
+            - last_event: dict or None
+    """
 ```
 
-### Policy Application
-
-#### `apply_security_policy(data, policy, **options) -> SecuredData`
-
-Applies a security policy to a piece of data, enforcing all its rules.
+### Example
 
 ```python
-# Apply the financial security policy to a report.
-secured = security.apply_security_policy(
-    data=financial_report,
-    policy=custom_policy,
-    user_id="analyst123", # The user ID for access control and auditing.
-    user_role="financial_analyst", # The user's role.
-    strict_enforcement=True # Fail the operation if any policy rule cannot be met.
-)
+from maif.security import SecurityManager
+
+# Create security manager for local encryption
+security = SecurityManager(use_kms=False, require_encryption=True)
+
+# Encrypt sensitive data
+original = b"User SSN: 123-45-6789"
+encrypted = security.encrypt_data(original)
+
+print(f"Original size: {len(original)}")
+print(f"Encrypted size: {len(encrypted)}")
+
+# Decrypt
+decrypted = security.decrypt_data(encrypted)
+assert decrypted == original
+
+# Check status
+status = security.get_security_status()
+print(f"Security events: {status['events_logged']}")
 ```
 
-#### `validate_security_compliance(data, policy) -> ComplianceResult`
+## MAIFSigner
 
-Checks if a piece of data is compliant with a given security policy.
+Handles digital signatures and provenance chain management.
+
+### Constructor
 
 ```python
-# Validate a piece of data against the policy.
-compliance = security.validate_security_compliance(data, policy)
+class MAIFSigner:
+    def __init__(
+        self,
+        private_key_path: Optional[str] = None,
+        agent_id: Optional[str] = None
+    ):
+        """
+        Initialize signer.
 
-# If not compliant, print the violations and suggested fixes.
-if not compliance.is_compliant:
-    for violation in compliance.violations:
-        print(f"Violation: {violation.description}")
-        print(f"Suggested Remediation: {violation.suggested_remediation}")
+        Args:
+            private_key_path: Path to PEM private key file
+            agent_id: Agent identifier (auto-generated if not provided)
+        """
 ```
 
-## Key Management
+### Methods
 
-### Key Storage & Retrieval
+#### sign_data
 
-#### `store_key(key, **options) -> str`
-
-Securely stores a signing key in the configured key management backend.
+Sign data and return base64-encoded signature.
 
 ```python
-# Store a signing key in a secure enclave.
-key_id = security.store_key(
-    key=signing_key,
-    storage_backend="secure_enclave", # The storage backend to use.
-    key_name="document-signing-2024", # A human-readable name for the key.
-    hardware_backed=True, # Indicate that the key is hardware-backed.
-    access_policy="restricted" # An access policy for the key itself.
-)
+def sign_data(self, data: bytes) -> str:
+    """
+    Sign data.
+
+    Args:
+        data: Data to sign
+
+    Returns:
+        Base64-encoded RSA-PSS signature
+
+    Raises:
+        ValueError: If data is empty
+    """
 ```
 
-#### `retrieve_key(key_id, **options) -> SigningKey`
+#### get_public_key_pem
 
-Retrieves a signing key from the key management backend.
+Get the public key in PEM format.
 
 ```python
-# Retrieve a key from storage, requiring a password and user presence.
-key = security.retrieve_key(
-    key_id="document-signing-2024",
-    password="strong-password", # A password to decrypt the key, if required.
-    require_user_presence=True, # Require user presence (e.g., a hardware key tap).
-    verify_key_integrity=True # Verify the integrity of the key before returning it.
-)
+def get_public_key_pem(self) -> bytes:
+    """
+    Get public key.
+
+    Returns:
+        PEM-encoded public key bytes
+    """
 ```
 
-### Key Rotation
+#### add_provenance_entry
 
-#### `rotate_key(key_id, **options) -> KeyRotationResult`
-
-Rotates a signing key, generating a new key and updating associated metadata.
+Add an entry to the provenance chain.
 
 ```python
-# Rotate a signing key and generate a new 3072-bit key.
-rotation = security.rotate_key(
-    key_id="document-signing-2024",
-    rotation_strategy="immediate", # The strategy for rotation (e.g., immediate, scheduled).
-    new_key_size=3072, # The size of the new key.
-    update_certificates=True, # Automatically update associated certificates.
-    verify_rotation=True # Verify that the rotation was successful.
-)
+def add_provenance_entry(
+    self,
+    action: str,
+    block_hash: str,
+    metadata: Optional[Dict] = None
+) -> ProvenanceEntry:
+    """
+    Add provenance entry.
+
+    Args:
+        action: Action performed (e.g., "create", "update", "delete")
+        block_hash: Hash of the affected block
+        metadata: Optional additional metadata
+
+    Returns:
+        The created ProvenanceEntry
+    """
 ```
 
-## Security Monitoring
+#### get_provenance_chain
 
-### Audit Logging
-
-#### `get_security_audit_log(**filters) -> List[SecurityAuditEntry]`
-
-Retrieves detailed security audit logs with filtering capabilities.
+Get the complete provenance chain.
 
 ```python
-# Retrieve security audit logs for specific events and security levels.
-audits = security.get_security_audit_log(
-    start_date="2024-01-01",
-    event_types=["signature_created", "key_accessed"], # Filter by event type.
-    security_levels=[SecurityLevel.CONFIDENTIAL], # Filter by security level.
-    include_details=True # Include detailed information in the log entries.
-)
+def get_provenance_chain(self) -> List[Dict]:
+    """
+    Get provenance chain.
 
-# Iterate through the audit log entries.
-for entry in audits:
-    print(f"Event: {entry.event_type}")
-    print(f"User: {entry.user_id}")
-    print(f"Result: {entry.result}")
-    if entry.security_violation:
-        print(f"VIOLATION: {entry.violation_details}")
+    Returns:
+        List of provenance entries as dictionaries
+    """
 ```
 
-### Threat Detection
+#### sign_maif_manifest
 
-#### `detect_security_threats(**options) -> ThreatDetectionResult`
-
-Automatically detects potential security threats based on operational patterns.
+Sign a MAIF manifest.
 
 ```python
-# Detect potential security threats over the last 24 hours.
-threats = security.detect_security_threats(
-    time_window_hours=24, # The time window to analyze.
-    use_machine_learning=True, # Use an ML model to detect anomalous patterns.
-    threat_sensitivity="high", # The sensitivity level for threat detection.
-    monitor_key_access=True, # Monitor for suspicious key access patterns.
-    monitor_signature_operations=True # Monitor for suspicious signature operations.
+def sign_maif_manifest(self, manifest: Dict) -> Dict:
+    """
+    Sign a manifest.
+
+    Args:
+        manifest: Manifest dictionary
+
+    Returns:
+        Signed manifest with signature, public_key, and signature_metadata
+    """
+```
+
+### Example
+
+```python
+from maif.security import MAIFSigner
+
+# Create signer
+signer = MAIFSigner(agent_id="my-agent")
+
+# Sign data
+data = b"Important document content"
+signature = signer.sign_data(data)
+print(f"Signature: {signature[:50]}...")
+
+# Get public key for verification
+public_key = signer.get_public_key_pem()
+print(f"Public key length: {len(public_key)} bytes")
+
+# Add provenance entry
+entry = signer.add_provenance_entry(
+    action="create",
+    block_hash="abc123...",
+    metadata={"reason": "Initial creation"}
 )
 
-# If threats are detected, print the details.
-if threats.threats_detected:
-    for threat in threats.threats:
-        print(f"Threat Type: {threat.type}")
-        print(f"Severity: {threat.severity}")
-        print(f"Recommended Actions: {threat.recommended_actions}")
+# Get provenance chain
+chain = signer.get_provenance_chain()
+print(f"Provenance chain has {len(chain)} entries")
 ```
 
-### Security Alerts
+## MAIFVerifier
 
-#### `configure_security_alerts(**config)`
+Handles verification of signatures and provenance chains.
 
-Configures the security engine to send alerts when specific events occur.
+### Methods
+
+#### verify_signature
+
+Verify a signature against data.
 
 ```python
-# Configure security alerts to be sent via email and webhook.
-security.configure_security_alerts(
-    email_alerts=True, # Enable email alerts.
-    alert_on_policy_violations=True, # Send an alert on any policy violation.
-    alert_on_tamper_detection=True, # Send an alert if tampering is detected.
-    security_team_email="security@company.com", # The email address for alerts.
-    webhook_url="https://company.com/security-webhook", # The webhook URL for alerts.
-    max_alerts_per_hour=50 # The maximum number of alerts to send per hour.
-)
+def verify_signature(
+    self,
+    data: bytes,
+    signature: str,
+    public_key_pem: str
+) -> bool:
+    """
+    Verify signature.
+
+    Args:
+        data: Original data
+        signature: Base64-encoded signature
+        public_key_pem: PEM-encoded public key
+
+    Returns:
+        True if signature is valid
+    """
 ```
 
-## Error Handling
+#### verify_maif_signature
 
-The Security module raises specific exceptions for different types of security-related errors.
+Verify a signed MAIF manifest.
 
 ```python
-from maif.exceptions import (
-    SecurityError,          # Base exception for security errors.
-    SignatureError,         # Raised on signature creation or verification failures.
-    KeyManagementError,     # Raised on errors related to key management.
-    TamperDetectionError,   # Raised when tampering is detected.
-    PolicyViolationError    # Raised when a security policy is violated.
-)
+def verify_maif_signature(self, signed_manifest: Dict) -> bool:
+    """
+    Verify manifest signature.
 
-try:
-    signature = security.sign(data, key)
-    verification = security.verify(data, signature, public_key)
-    
-except SignatureError as e:
-    logger.error(f"Signature operation failed: {e}")
-except KeyManagementError as e:
-    logger.error(f"Key management error: {e}")
-except TamperDetectionError as e:
-    logger.error(f"Tamper detection failed: {e}")
-except PolicyViolationError as e:
-    logger.error(f"Security policy violation: {e}")
+    Args:
+        signed_manifest: Manifest with signature and public_key
+
+    Returns:
+        True if signature is valid
+    """
 ```
 
-## Best Practices
+#### verify_maif_manifest
 
-### Key Management
-
-Follow these best practices to ensure the security of your signing keys.
+Verify a MAIF manifest structure and signature.
 
 ```python
-# 1. Use hardware-backed keys for critical operations to protect against key theft.
-key = security.generate_key("RSA", hardware_backed=True)
+def verify_maif_manifest(self, manifest: Dict) -> Tuple[bool, List[str]]:
+    """
+    Verify manifest.
 
-# 2. Implement a policy for regular key rotation.
-security.configure_key_rotation(interval_days=90)
+    Args:
+        manifest: Manifest dictionary
 
-# 3. Store keys in a secure, hardware-based backend like an HSM or secure enclave.
-security.store_key(key, storage_backend="secure_enclave")
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
 ```
 
-### Signature Security
+#### verify_provenance_chain
 
-Follow these best practices to ensure the strength and validity of your digital signatures.
+Verify the integrity of a provenance chain.
 
 ```python
-# 1. Use strong, modern signature algorithms like RSA-PSS or EdDSA.
-security.configure(default_signature_algorithm="RSA-PSS")
+def verify_provenance_chain(
+    self,
+    provenance_data: Dict
+) -> Tuple[bool, List[str]]:
+    """
+    Verify provenance chain.
 
-# 2. Include trusted timestamps in your signatures to prevent backdating.
-signature = security.sign(data, key, include_timestamp=True)
+    Args:
+        provenance_data: Provenance chain data
 
-# 3. Always verify the full certificate chain to establish trust.
-security.verify(data, signature, key, check_certificate_chain=True)
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
 ```
 
-### Monitoring
-
-Follow these best practices to monitor the security of your system.
+### Example
 
 ```python
-# 1. Enable comprehensive auditing for all security-related operations.
-security.configure(audit_all_operations=True)
+from maif.security import MAIFSigner, MAIFVerifier
 
-# 2. Enable real-time threat detection to quickly identify suspicious activity.
-security.enable_threat_detection(real_time=True)
+# Create signer and sign manifest
+signer = MAIFSigner(agent_id="agent-1")
+manifest = {"blocks": [], "version": "1.0.0"}
+signed = signer.sign_maif_manifest(manifest)
 
-# 3. Configure automated alerts to be notified of security events immediately.
-security.configure_security_alerts(immediate_alerts=True)
+# Verify with verifier
+verifier = MAIFVerifier()
+
+# Verify signature
+is_valid = verifier.verify_maif_signature(signed)
+print(f"Signature valid: {is_valid}")
+
+# Verify manifest structure
+is_valid, errors = verifier.verify_maif_manifest(signed)
+if not is_valid:
+    print(f"Errors: {errors}")
+
+# Verify provenance chain
+provenance = {"chain": signer.get_provenance_chain()}
+is_valid, errors = verifier.verify_provenance_chain(provenance)
+print(f"Provenance valid: {is_valid}")
 ```
 
-## Related APIs
+## ProvenanceEntry
 
-- **[Privacy Engine](/api/privacy/engine)** - Privacy and encryption
-- **[Access Control](/api/security/access-control)** - Permission management
-- **[Cryptography](/api/security/crypto)** - Cryptographic operations 
+Dataclass representing a provenance chain entry.
+
+```python
+@dataclass
+class ProvenanceEntry:
+    timestamp: float
+    agent_id: str
+    action: str
+    block_hash: str
+    signature: str = ""
+    previous_hash: Optional[str] = None
+    entry_hash: Optional[str] = None
+    agent_did: Optional[str] = None
+    metadata: Dict = field(default_factory=dict)
+    verification_status: str = "unverified"
+```
+
+### Methods
+
+#### calculate_entry_hash
+
+Calculate the cryptographic hash of the entry.
+
+```python
+def calculate_entry_hash(self) -> str:
+    """Calculate SHA-256 hash of entry."""
+```
+
+#### verify
+
+Verify entry integrity and signature.
+
+```python
+def verify(self, public_key_pem: Optional[str] = None) -> bool:
+    """
+    Verify entry.
+
+    Args:
+        public_key_pem: Public key for signature verification
+
+    Returns:
+        True if valid
+    """
+```
+
+#### to_dict
+
+Convert to dictionary.
+
+```python
+def to_dict(self) -> Dict:
+    """Convert to dictionary representation."""
+```
+
+## Security Best Practices
+
+### 1. Key Management
+
+```python
+# Use environment variables for key paths
+import os
+from maif.security import MAIFSigner
+
+key_path = os.environ.get("MAIF_PRIVATE_KEY_PATH")
+signer = MAIFSigner(private_key_path=key_path)
+```
+
+### 2. Encrypt Sensitive Data
+
+```python
+from maif.security import SecurityManager
+
+security = SecurityManager(require_encryption=True)
+
+# Always encrypt PII
+pii_data = b"SSN: 123-45-6789"
+encrypted = security.encrypt_data(pii_data)
+```
+
+### 3. Verify Before Trust
+
+```python
+from maif.security import MAIFVerifier
+
+verifier = MAIFVerifier()
+
+# Always verify manifests from external sources
+is_valid, errors = verifier.verify_maif_manifest(external_manifest)
+if not is_valid:
+    raise SecurityError(f"Invalid manifest: {errors}")
+```
+
+### 4. Log Security Events
+
+```python
+security.log_security_event("access_attempt", {
+    "user": "user-123",
+    "resource": "sensitive-data",
+    "result": "denied"
+})
+```
+
+## Related Documentation
+
+- [Access Control](/api/security/access-control) - Fine-grained access control
+- [Privacy Engine](/api/privacy/engine) - Privacy features

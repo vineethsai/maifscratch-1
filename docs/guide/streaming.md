@@ -1,274 +1,288 @@
 # Real-time Processing
 
-MAIF provides high-performance real-time processing capabilities for streaming data, live AI inference, and continuous intelligence. This guide covers streaming architectures, real-time APIs, and performance optimization techniques.
+MAIF provides streaming capabilities for efficient processing of large files and real-time data ingestion. This guide covers streaming operations.
 
 ## Overview
 
-Real-time processing in MAIF enables:
+MAIF's streaming features include:
 
-- **High-Throughput Streaming**: Process 400+ MB/s of data
-- **Low-Latency Inference**: <50ms response times for semantic search
-- **Continuous Learning**: Adapt models in real-time
-- **Event-Driven Architecture**: React to data changes instantly
-- **Scalable Processing**: Auto-scale based on load
+- **Stream Writers**: Write large files incrementally
+- **Stream Readers**: Read files without loading entirely into memory
+- **Batch Processing**: Process data in batches
+- **Memory-Mapped I/O**: Efficient file access
 
-```mermaid
-graph TB
-    subgraph "Real-time Processing Pipeline"
-        DataSources[Data Sources]
-        
-        DataSources --> StreamIngestion[Stream Ingestion]
-        StreamIngestion --> BufferLayer[Buffer Layer]
-        BufferLayer --> ProcessingEngine[Processing Engine]
-        
-        ProcessingEngine --> AIInference[AI Inference]
-        ProcessingEngine --> SemanticAnalysis[Semantic Analysis]
-        ProcessingEngine --> PrivacyFiltering[Privacy Filtering]
-        
-        AIInference --> StreamOutput[Stream Output]
-        SemanticAnalysis --> StreamOutput
-        PrivacyFiltering --> StreamOutput
-        
-        StreamOutput --> RealTimeAPI[Real-time API]
-        StreamOutput --> EventTriggers[Event Triggers]
-        StreamOutput --> ContinuousStorage[Continuous Storage]
-        
-        BufferLayer --> MemoryMapped[Memory-Mapped I/O]
-        ProcessingEngine --> ParallelProcessing[Parallel Processing]
-        StreamOutput --> LoadBalancer[Load Balancer]
-    end
-    
-    style StreamIngestion fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style ProcessingEngine fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style RealTimeAPI fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-```
+## Stream Writer
 
-## Streaming Architecture
-
-### 1. Stream Ingestion
-
-MAIF supports multiple streaming data sources. The following example demonstrates how to configure a `StreamProcessor` and add Kafka, WebSocket, and file-based sources for real-time data ingestion.
+Write MAIF files incrementally:
 
 ```python
-from maif_sdk import create_stream_processor, StreamConfig, create_client
+from maif.streaming import MAIFStreamWriter
 
-# Assume a client is already created.
-client = create_client()
+# Create stream writer
+with MAIFStreamWriter("large_output.maif") as writer:
+    # Write chunks incrementally
+    for i in range(1000):
+        writer.write_text_chunk(f"Document {i} content...")
 
-# Configure the stream processor with a buffer, batch size, and parallelism.
-stream_config = StreamConfig(
-    buffer_size="128MB",
+print("Streaming write complete!")
+```
+
+### Writing Different Content Types
+
+```python
+from maif.streaming import MAIFStreamWriter
+
+with MAIFStreamWriter("multimodal_stream.maif") as writer:
+    # Write text chunks
+    writer.write_text_chunk("First document")
+    writer.write_text_chunk("Second document")
+    
+    # Write binary data (images, etc.)
+    with open("image.png", "rb") as f:
+        writer.write_binary_chunk(f.read())
+```
+
+## Stream Reader
+
+Read MAIF files efficiently:
+
+```python
+from maif.streaming import MAIFStreamReader
+
+# Create stream reader
+with MAIFStreamReader("large_file.maif") as reader:
+    # Read blocks one at a time
+    for block in reader.read_blocks():
+        print(f"Block: {block.block_id}")
+        print(f"Type: {block.block_type}")
+        # Process block without loading entire file
+```
+
+### Selective Reading
+
+```python
+from maif.streaming import MAIFStreamReader
+
+with MAIFStreamReader("data.maif") as reader:
+    # Read only text blocks
+    for block in reader.read_blocks_by_type("TEXT"):
+        print(f"Text: {block.data[:100]}...")
+    
+    # Read blocks in range
+    for block in reader.read_blocks_range(start=0, end=100):
+        process(block)
+```
+
+## Batch Processing
+
+Process data in efficient batches:
+
+```python
+from maif.batch_processor import BatchProcessor, batch_process
+
+# Create batch processor
+processor = BatchProcessor(batch_size=100)
+
+# Process items in batches
+items = ["doc1", "doc2", "doc3", ...]
+
+for batch in processor.process(items):
+    # Each batch contains up to 100 items
+    for item in batch:
+        process(item)
+```
+
+### Stream Batch Processor
+
+```python
+from maif.batch_processor import StreamBatchProcessor
+
+# For streaming data
+processor = StreamBatchProcessor(
+    batch_size=100,
+    timeout=5.0  # Flush batch after 5 seconds
+)
+
+# Add items as they arrive
+for item in data_stream:
+    processor.add(item)
+    
+    # Process when batch is ready
+    if processor.is_ready():
+        batch = processor.get_batch()
+        process_batch(batch)
+
+# Process any remaining items
+final_batch = processor.flush()
+```
+
+### Distributed Batch Processing
+
+```python
+from maif.batch_processor import DistributedBatchProcessor
+
+# For multi-node processing
+processor = DistributedBatchProcessor(
     batch_size=1000,
-    processing_mode="real_time",
-    parallelism=4
+    num_workers=4
 )
 
-# Create a stream processor for handling live data streams.
-stream_processor = create_stream_processor("live-data", client, stream_config)
-
-# Add a Kafka stream as a data source.
-kafka_stream = stream_processor.add_kafka_source(
-    bootstrap_servers=["localhost:9092"],
-    topic="data-stream",
-    consumer_group="maif-processors"
-)
-
-# Add a WebSocket stream for real-time updates from a web API.
-websocket_stream = stream_processor.add_websocket_source(
-    url="wss://api.example.com/stream",
-    headers={"Authorization": "Bearer token"}
-)
-
-# Add a file source to monitor a directory for new line-delimited JSON files.
-file_stream = stream_processor.add_file_source(
-    path="/data/streaming/",
-    pattern="*.jsonl",
-    poll_interval="1s"
-)
+# Process with parallelism
+results = processor.process_parallel(items)
 ```
 
-### 2. Real-time Processing
+## Memory-Mapped I/O
 
-Process streaming data with low latency using decorators. The following examples show how to define functions that automatically handle incoming text and image messages from the stream.
+For large files, enable memory mapping:
 
 ```python
-from types import SimpleNamespace
+from maif.core import MAIFEncoder, MAIFDecoder
 
-# Mock functions for demonstration purposes.
-async def get_or_create_artifact(source_id): return SimpleNamespace()
-async def send_analysis_result(source_id, analysis): pass
-async def send_detection_results(source_id, objects): pass
-
-# This decorator registers the function to process incoming text messages.
-@stream_processor.on_text_message
-async def process_text_stream(message):
-    # Get or create an artifact based on the message source.
-    artifact = await get_or_create_artifact(message.source_id)
-    
-    # Asynchronously add the text content to the artifact for immediate processing.
-    text_id = await artifact.add_text_async(
-        message.content,
-        process_immediately=True, # Ensure low-latency processing.
-        generate_embeddings=True  # Generate embeddings in real-time.
-    )
-    
-    # Perform further analysis if required by the message.
-    if message.requires_analysis:
-        analysis = await artifact.analyze_sentiment_async(text_id)
-        await send_analysis_result(message.source_id, analysis)
-    
-    return text_id
-
-# This decorator registers the function to process incoming image messages.
-@stream_processor.on_image_message
-async def process_image_stream(message):
-    artifact = await get_or_create_artifact(message.source_id)
-    
-    # Asynchronously add the image data and specify real-time feature extraction.
-    image_id = await artifact.add_image_async(
-        message.image_data,
-        features={
-            "object_detection": True,
-            "scene_analysis": True,
-            "face_detection": False  # Disable features for privacy.
-        }
-    )
-    
-    # Get the results of the real-time object detection.
-    objects = await artifact.get_detected_objects_async(image_id)
-    await send_detection_results(message.source_id, objects)
-    
-    return image_id
-```
-
-### 3. Event-Driven Processing
-
-React to data events in real-time using event handlers. These examples show how to trigger actions based on specific event types, such as new data, similarity alerts, or privacy violations.
-
-```python
-# Mock functions for demonstration.
-async def process_high_priority(data): pass
-async def queue_for_batch_processing(data): pass
-async def find_similar_content(content, threshold, max_results): return []
-async def trigger_similarity_alert(source, items): pass
-async def anonymize_content(content_id): pass
-async def notify_privacy_team(event): pass
-
-# This decorator registers a handler for the 'new_data' event.
-@stream_processor.on_event("new_data")
-async def handle_new_data(event):
-    data = event.payload
-    
-    # Branch processing based on data priority.
-    if data.priority == "high":
-        await process_high_priority(data)
-    else:
-        await queue_for_batch_processing(data)
-
-# This handler triggers on similarity detection events.
-@stream_processor.on_event("similarity_threshold")
-async def handle_similarity_alert(event):
-    # Search for content that is highly similar to the incoming event's content.
-    similar_items = await find_similar_content(
-        event.content,
-        threshold=0.9,
-        max_results=10
-    )
-    
-    # If similar items are found, trigger an alert.
-    if similar_items:
-        await trigger_similarity_alert(event.source, similar_items)
-
-# This handler responds to privacy violation events.
-@stream_processor.on_event("privacy_violation")
-async def handle_privacy_alert(event):
-    # Take immediate action to anonymize the content and notify the relevant team.
-    await anonymize_content(event.content_id)
-    await notify_privacy_team(event)
-```
-
-## High-Performance Features
-
-### 1. Memory-Mapped I/O
-
-Achieve maximum throughput with memory-mapped I/O, which allows for processing large files without loading them entirely into memory. This is ideal for zero-copy data processing.
-
-```python
-# Create a stream processor specifically configured for memory-mapped I/O.
-mmap_config = StreamConfig(
-    memory_mapping=True,
-    mmap_size="1GB",
-    zero_copy=True
+# Enable memory mapping when creating
+encoder = MAIFEncoder(
+    agent_id="mmap-demo",
+    enable_mmap=True
 )
-mmap_processor = create_stream_processor("mmap-stream", client, mmap_config)
 
-async def process_chunk_async(chunk):
-    # Mock processing for a chunk of data.
-    pass
+# Large write operations are more efficient
+for i in range(10000):
+    encoder.add_text_block(f"Content {i}")
 
-# This handler processes large files using memory mapping.
-@mmap_processor.on_large_file
-async def process_large_file(file_path):
-    # The file is mapped into memory, allowing for efficient, chunked access.
-    with mmap_processor.mmap_file(file_path) as mmap_data:
-        # Iterate over the data in large chunks without high memory overhead.
-        async for chunk in mmap_data.iter_chunks(chunk_size="64MB"):
-            await process_chunk_async(chunk)
+encoder.save("large.maif")
 ```
 
-### 2. Parallel Processing
-
-Leverage multiple cores for maximum performance by processing streams in parallel. This example sets up a processor with multiple worker threads for concurrent batch and search operations.
+### Reading with Memory Mapping
 
 ```python
-import asyncio
+from maif.block_storage import BlockStorage
 
-# Create a stream processor configured for parallel execution.
-parallel_config = StreamConfig(
-    parallelism=8,
-    worker_threads=16,
-    async_processing=True
-)
-parallel_processor = create_stream_processor("parallel", client, parallel_config)
+# Use block storage with mmap
+storage = BlockStorage("large.maif", enable_mmap=True)
 
-async def process_message_async(message):
-    # Mock processing for a single message.
-    return "processed"
-def merge_and_rank_results(results):
-    # Mock merging and ranking of search results.
-    return results
-
-# This decorator defines a function that processes messages in parallel batches.
-@parallel_processor.batch_processor(batch_size=1000)
-async def process_batch(messages):
-    # Create an asyncio task for each message in the batch.
-    tasks = []
-    for message in messages:
-        task = asyncio.create_task(process_message_async(message))
-        tasks.append(task)
-    
-    # Wait for all tasks in the batch to complete.
-    results = await asyncio.gather(*tasks)
-    return results
-
-# This function demonstrates a parallel similarity search across multiple artifacts.
-async def parallel_similarity_search(query, artifacts):
-    # Create an asyncio task for each search operation.
-    search_tasks = []
-    for artifact in artifacts:
-        task = asyncio.create_task(
-            artifact.search_similar_async(query, max_results=10)
-        )
-        search_tasks.append(task)
-    
-    # Gather and combine the results from all parallel searches.
-    all_results = await asyncio.gather(*search_tasks)
-    return merge_and_rank_results(all_results)
+# Efficient random access
+block = storage.get_block("block-id")
 ```
+
+## Write Buffering
+
+The encoder uses write buffering for performance:
+
+```python
+from maif.core import MAIFEncoder
+
+# Configure buffer size
+encoder = MAIFEncoder(
+    agent_id="buffered",
+    buffer_size=128 * 1024  # 128KB buffer
+)
+
+# Writes are buffered
+for i in range(1000):
+    encoder.add_text_block(f"Item {i}")
+
+# Buffer is flushed on save
+encoder.save("buffered.maif")
+```
+
+## Hot Buffer
+
+For high-throughput scenarios:
+
+```python
+from maif.hot_buffer import HotBuffer
+
+# Create hot buffer for caching
+buffer = HotBuffer(max_size=1024 * 1024)  # 1MB
+
+# Add items to buffer
+buffer.put("key1", data1)
+buffer.put("key2", data2)
+
+# Retrieve from buffer
+data = buffer.get("key1")
+
+# Buffer handles eviction automatically
+```
+
+## Performance Tips
+
+### 1. Use Streaming for Large Files
+
+```python
+# Instead of loading entire file
+from maif.streaming import MAIFStreamReader
+
+with MAIFStreamReader("huge.maif") as reader:
+    for block in reader.read_blocks():
+        process(block)
+```
+
+### 2. Enable Memory Mapping
+
+```python
+encoder = MAIFEncoder(agent_id="fast", enable_mmap=True)
+```
+
+### 3. Batch Operations
+
+```python
+from maif.batch_processor import batch_process
+
+# Process in batches
+results = batch_process(items, batch_size=100)
+```
+
+### 4. Use Compression
+
+```python
+encoder = MAIFEncoder(
+    agent_id="compressed",
+    enable_compression=True
+)
+```
+
+## Complete Streaming Example
+
+```python
+from maif.streaming import MAIFStreamWriter, MAIFStreamReader
+from maif.batch_processor import BatchProcessor
+
+# Write large dataset in batches
+processor = BatchProcessor(batch_size=100)
+documents = [f"Document {i}" for i in range(10000)]
+
+with MAIFStreamWriter("large_dataset.maif") as writer:
+    for batch in processor.process(documents):
+        for doc in batch:
+            writer.write_text_chunk(doc)
+
+print("Written 10,000 documents")
+
+# Read back efficiently
+with MAIFStreamReader("large_dataset.maif") as reader:
+    count = 0
+    for block in reader.read_blocks():
+        count += 1
+        if count % 1000 == 0:
+            print(f"Processed {count} blocks")
+
+print(f"Total blocks: {count}")
+```
+
+## Available Streaming Components
+
+| Component | Module | Purpose |
+|-----------|--------|---------|
+| `MAIFStreamWriter` | `maif.streaming` | Incremental file writing |
+| `MAIFStreamReader` | `maif.streaming` | Efficient file reading |
+| `BatchProcessor` | `maif.batch_processor` | Batch processing |
+| `StreamBatchProcessor` | `maif.batch_processor` | Streaming batches |
+| `DistributedBatchProcessor` | `maif.batch_processor` | Parallel processing |
+| `HotBuffer` | `maif.hot_buffer` | High-speed caching |
+| `BlockStorage` | `maif.block_storage` | Low-level block access |
 
 ## Next Steps
 
-- Explore [Performance Optimization](performance.md) for advanced tuning
-- Learn about [Distributed Deployment](distributed.md) for scaling across clusters
-- Check out [Monitoring & Observability](monitoring.md) for production monitoring
-- See [Examples](../examples/) for complete streaming applications 
+- **[Performance →](/guide/performance)** - Optimization techniques
+- **[Multimodal Data →](/guide/multimodal)** - Working with different data types
+- **[API Reference →](/api/)** - Complete API documentation

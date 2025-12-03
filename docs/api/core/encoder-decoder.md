@@ -1,703 +1,562 @@
-# Encoder/Decoder API Reference
+# MAIFEncoder & MAIFDecoder
 
-The `MAIFEncoder` and `MAIFDecoder` classes provide low-level binary operations for MAIF artifacts, offering fine-grained control over serialization, compression, encryption, and streaming operations.
+The `MAIFEncoder` and `MAIFDecoder` classes provide low-level access to MAIF binary format operations. These are the foundation upon which the higher-level SDK is built.
 
-## Overview
+::: tip When to Use
+Use these classes when you need:
+- Direct control over block structure
+- Append-on-write operations
+- Custom block types
+- Integration with existing systems
 
-Encoder/Decoder features:
-- **Binary Serialization**: Efficient data encoding/decoding with custom formats
-- **Compression**: Advanced algorithms including HSC (Hierarchical Semantic Compression)
-- **Encryption**: Industry-standard encryption with privacy-preserving features
-- **Streaming**: High-throughput operations with memory-mapped I/O (400+ MB/s)
-- **Performance**: Optimized for <50ms latency with parallel processing
+For most use cases, prefer the high-level `MAIFClient` and `Artifact` classes.
+:::
 
-```mermaid
-graph TB
-    subgraph "Encoder/Decoder Pipeline"
-        Input[Input Data]
-        
-        subgraph "Encoding"
-            Serialize[Serialization]
-            Compress[Compression]
-            Encrypt[Encryption]
-            Sign[Digital Signing]
-        end
-        
-        subgraph "Novel Algorithms"
-            HSC[HSC Algorithm]
-            ACAM[ACAM Processing]
-            CSB[Cryptographic Binding]
-        end
-        
-        subgraph "Decoding"
-            Verify[Verification]
-            Decrypt[Decryption]
-            Decompress[Decompression]
-            Deserialize[Deserialization]
-        end
-        
-        Output[Output Data]
-    end
-    
-    Input --> Serialize
-    Serialize --> Compress
-    Compress --> Encrypt
-    Encrypt --> Sign
-    
-    Compress --> HSC
-    Serialize --> ACAM
-    Encrypt --> CSB
-    
-    Sign --> Verify
-    Verify --> Decrypt
-    Decrypt --> Decompress
-    Decompress --> Deserialize
-    Deserialize --> Output
-    
-    style Input fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style Output fill:#3c82f6,stroke:#1e40af,stroke-width:2px,color:#fff
-    style HSC fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style ACAM fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    style CSB fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-```
+## MAIFEncoder
 
-## Quick Start
+The encoder creates MAIF files by adding blocks of various types.
 
-This example shows the basic usage pattern for the `MAIFEncoder` and `MAIFDecoder`, including simple encoding/decoding and advanced configuration.
+### Quick Start
 
 ```python
-from maif import MAIFEncoder, MAIFDecoder, CompressionLevel
+from maif import MAIFEncoder
 
-# Create a basic encoder and decoder with default settings.
-encoder = MAIFEncoder()
-decoder = MAIFDecoder()
+# Create encoder
+encoder = MAIFEncoder(agent_id="my-agent")
 
-# Encode a simple Python dictionary.
-data = {"text": "Hello world", "metadata": {"type": "greeting"}}
-encoded = encoder.encode(data)
+# Add blocks
+encoder.add_text_block("Hello, World!")
+encoder.add_binary_block(b"binary data", block_type="data")
 
-# Decode the binary data back into a Python dictionary.
-decoded = decoder.decode(encoded)
-
-# Create an encoder with advanced features enabled.
-encoder = MAIFEncoder(
-    compression=CompressionLevel.HIGH, # Use a high compression level.
-    encryption=True, # Enable encryption.
-    enable_signing=True, # Add a digital signature.
-    use_semantic_compression=True # Use the novel HSC algorithm.
-)
+# Save to file
+encoder.save("output.maif")
 ```
-
-## MAIFEncoder Class
 
 ### Constructor
 
-The `MAIFEncoder` constructor is highly configurable, allowing you to fine-tune the encoding process for your specific needs.
+```python
+class MAIFEncoder:
+    def __init__(
+        self,
+        agent_id: Optional[str] = None,
+        existing_maif_path: Optional[str] = None,
+        existing_manifest_path: Optional[str] = None,
+        enable_privacy: bool = False,
+        privacy_engine: Optional[PrivacyEngine] = None,
+        use_aws: bool = False,
+        aws_bucket: Optional[str] = None,
+        aws_prefix: str = "maif/"
+    ):
+        """
+        Initialize MAIF encoder.
+
+        Args:
+            agent_id: Unique agent identifier (auto-generated if not provided)
+            existing_maif_path: Path to existing MAIF file for append operations
+            existing_manifest_path: Path to existing manifest for append operations
+            enable_privacy: Enable privacy features (encryption, anonymization)
+            privacy_engine: Custom privacy engine instance
+            use_aws: Use AWS unified storage backend
+            aws_bucket: S3 bucket for AWS storage
+            aws_prefix: S3 key prefix for AWS storage
+        """
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `blocks` | `List[MAIFBlock]` | List of all blocks in the encoder |
+| `agent_id` | `str` | Agent identifier |
+| `version_history` | `Dict[str, List[MAIFVersion]]` | Version history by block ID |
+| `block_registry` | `Dict[str, List[MAIFBlock]]` | Block versions by block ID |
+
+### Methods
+
+#### add_text_block
+
+Add a text block with optional privacy controls.
 
 ```python
-encoder = MAIFEncoder(
-    # --- Compression Settings ---
-    compression=CompressionLevel.BALANCED, # The default compression level.
-    compression_algorithm="zstd", # The compression algorithm to use (e.g., zstd, lz4, gzip).
-    semantic_compression=True,          # Enable the novel HSC algorithm for text.
-    compression_threshold=1024, # Only compress data larger than 1 KB.
-    
-    # --- Encryption Settings ---
-    encryption=True, # Enable encryption by default.
-    encryption_algorithm="ChaCha20-Poly1305", # A fast and secure encryption cipher.
-    key_derivation_rounds=100000, # The number of rounds for key derivation (PBKDF2).
-    
-    # --- Performance Settings ---
-    buffer_size=128*1024,               # The size of the write buffer (128 KB).
-    use_mmap=True,                      # Use memory-mapped I/O for large data.
-    parallel_processing=True, # Enable multi-threaded processing.
-    worker_threads=4, # The number of worker threads to use.
-    
-    # --- Security Settings ---
-    enable_signing=True, # Add a digital signature to the encoded data.
-    hash_algorithm="sha256", # The hash algorithm for checksums and signatures.
-    
-    # --- Advanced Features ---
-    enable_deduplication=True, # Enable block-level deduplication to save space.
-    enable_delta_encoding=True, # Enable delta encoding for versioned data.
-    preserve_metadata=True, # Ensure all metadata is preserved during encoding.
-    
-    # --- Validation ---
-    validate_input=True, # Validate input data before encoding.
-    strict_mode=False # If True, will raise errors on minor issues.
+def add_text_block(
+    self,
+    text: str,
+    metadata: Optional[Dict] = None,
+    update_block_id: Optional[str] = None,
+    privacy_policy: Optional[PrivacyPolicy] = None,
+    anonymize: bool = False,
+    privacy_level: Optional[PrivacyLevel] = None,
+    encryption_mode: Optional[EncryptionMode] = None
+) -> str:
+    """
+    Add or update a text block.
+
+    Args:
+        text: Text content to add
+        metadata: Optional metadata dictionary
+        update_block_id: If provided, updates existing block
+        privacy_policy: Privacy policy to apply
+        anonymize: Apply anonymization to text
+        privacy_level: Privacy level for the block
+        encryption_mode: Encryption mode for the block
+
+    Returns:
+        Block ID
+    """
+```
+
+**Example:**
+
+```python
+from maif import MAIFEncoder, PrivacyLevel, EncryptionMode
+
+encoder = MAIFEncoder(agent_id="agent-1", enable_privacy=True)
+
+# Simple text block
+block_id = encoder.add_text_block("Hello, World!")
+
+# Text with metadata
+block_id = encoder.add_text_block(
+    "Sensitive information",
+    metadata={"category": "personal"},
+    privacy_level=PrivacyLevel.CONFIDENTIAL,
+    encryption_mode=EncryptionMode.AES_GCM
+)
+
+# Anonymized text
+block_id = encoder.add_text_block(
+    "User John Doe lives at 123 Main St",
+    anonymize=True
 )
 ```
 
-### Core Encoding Methods
+#### add_binary_block
 
-#### `encode(data, **options) -> bytes`
-
-Encodes a Python object into a binary `bytes` object. This is the primary method for encoding single data items.
+Add a binary data block.
 
 ```python
-# Encode a simple Python dictionary.
-data = {"message": "Hello", "timestamp": "2024-01-15"}
-encoded = encoder.encode(data)
+def add_binary_block(
+    self,
+    data: bytes,
+    block_type: str,
+    metadata: Optional[Dict] = None,
+    update_block_id: Optional[str] = None,
+    privacy_policy: Optional[PrivacyPolicy] = None
+) -> str:
+    """
+    Add or update a binary block.
 
-# Encode a more complex object with override options.
-encoded = encoder.encode(
-    data=complex_data,
-    
-    # --- Override Compression Options ---
-    force_compression=True, # Force compression even if the data is small.
-    compression_level=9, # Use a specific compression level for this operation.
-    
-    # --- Override Encryption Options ---
-    encryption_key="custom-key", # Provide a custom encryption key.
-    
-    # --- Override Metadata Options ---
-    include_schema=True, # Include the data schema in the encoded output.
-    include_timestamps=True, # Add timestamps to the metadata.
-    custom_metadata={"version": "1.0"}, # Add custom metadata.
-    
-    # --- Override Performance Options ---
-    streaming=True, # Use a streaming approach for large data.
-    chunk_size=64*1024, # The chunk size for streaming.
-    
-    # --- Override Validation Options ---
-    validate_before_encode=True, # Validate this specific input before encoding.
-    generate_checksum=True # Generate a checksum for this block.
-)
+    Args:
+        data: Binary data to add
+        block_type: Type of block (e.g., "data", "image", "video")
+        metadata: Optional metadata dictionary
+        update_block_id: If provided, updates existing block
+        privacy_policy: Privacy policy to apply
+
+    Returns:
+        Block ID
+    """
 ```
 
-#### `encode_stream(data_stream, output_stream, **options) -> EncodingStats`
-
-Encodes a stream of data items with high performance, writing the output to a target stream. This is ideal for very large datasets.
+**Example:**
 
 ```python
-# A generator that yields data items.
-def data_generator():
-    for i in range(1000000):
-        yield {"id": i, "data": f"Item {i}"}
-
-# Open a file to write the binary output.
-with open("output.maif", "wb") as output:
-    # Encode the stream and get performance statistics.
-    stats = encoder.encode_stream(
-        data_stream=data_generator(), # The input stream.
-        output_stream=output, # The output stream.
-        
-        # --- Streaming Options ---
-        batch_size=1000, # The number of items to process in each batch.
-        buffer_size=1024*1024, # The buffer size for the output stream (1 MB).
-        
-        # --- Progress Tracking ---
-        progress_callback=lambda p: print(f"Progress: {p:.1%}"), # A function to call with progress updates.
-        
-        # --- Performance Options ---
-        parallel_chunks=True, # Process chunks in parallel.
-        compression_level=CompressionLevel.FAST, # Use fast compression for real-time speed.
-        
-        # --- Memory Management ---
-        max_memory_usage=512*1024*1024,  # Set a 512MB memory limit for the operation.
-        flush_interval=10000 # The number of items after which to flush the stream.
+# Add image data
+with open("image.png", "rb") as f:
+    block_id = encoder.add_binary_block(
+        f.read(),
+        block_type="image",
+        metadata={"format": "png", "width": 1920, "height": 1080}
     )
 
-print(f"Throughput: {stats.throughput_mbps:.1f} MB/s")
-print(f"Compression ratio: {stats.compression_ratio:.2f}")
-```
-
-### Specialized Encoding Methods
-
-#### `encode_text(text, **options) -> bytes`
-
-A specialized method for encoding text, with options for advanced text processing and semantic-aware compression.
-
-```python
-# Encode a long text document with several processing options.
-encoded_text = encoder.encode_text(
-    text="Long document content...",
-    
-    # --- Text Processing Options ---
-    extract_entities=True, # Extract named entities from the text.
-    generate_summary=True, # Generate a summary of the text.
-    detect_language=True, # Detect the language of the text.
-    
-    # --- Semantic Processing Options ---
-    generate_embeddings=True, # Generate a semantic embedding for the text.
-    embedding_model="all-MiniLM-L6-v2", # Specify the embedding model.
-    
-    # --- Compression Options ---
-    use_semantic_compression=True, # Use the novel HSC algorithm.
-    dictionary_compression=True, # Use dictionary-based compression for this text.
-    
-    # --- Privacy Options ---
-    anonymize_pii=True, # Automatically detect and redact PII.
-    redact_sensitive=True # Redact other sensitive information based on patterns.
+# Add JSON data
+import json
+block_id = encoder.add_binary_block(
+    json.dumps({"key": "value"}).encode(),
+    block_type="data",
+    metadata={"format": "json"}
 )
 ```
 
-#### `encode_embeddings(embeddings, **options) -> bytes`
+#### add_embeddings_block
 
-A specialized method for efficiently encoding vector embeddings, with options for quantization and dimensionality reduction.
+Add semantic embeddings.
 
 ```python
-# Encode a single 384-dimensional embedding vector.
-embedding = [0.1, 0.2, 0.3, ...]
-encoded = encoder.encode_embeddings(
-    embeddings=embedding,
-    
-    # --- Compression Options ---
-    quantization_bits=8,            # Reduce precision to 8 bits per value.
-    use_pca_compression=True,       # Use PCA for dimensionality reduction.
-    compression_ratio=0.5, # The target compression ratio for PCA.
-    
-    # --- Metadata Options ---
-    model_name="all-MiniLM-L6-v2", # The name of the model that generated the embedding.
-    vector_dimensions=384, # The original dimensions of the vector.
-    normalization="l2" # The normalization method used.
-)
+def add_embeddings_block(
+    self,
+    embeddings: List[List[float]],
+    metadata: Optional[Dict] = None,
+    update_block_id: Optional[str] = None,
+    privacy_policy: Optional[PrivacyPolicy] = None
+) -> str:
+    """
+    Add or update an embeddings block.
 
-# Encode a batch of embeddings with deduplication.
-embeddings_batch = [
-    {"vector": [0.1, 0.2, ...], "id": "text-1"},
-    {"vector": [0.3, 0.4, ...], "id": "text-2"}
+    Args:
+        embeddings: List of embedding vectors
+        metadata: Optional metadata dictionary
+        update_block_id: If provided, updates existing block
+        privacy_policy: Privacy policy to apply
+
+    Returns:
+        Block ID
+    """
+```
+
+**Example:**
+
+```python
+# Add embeddings from your model
+embeddings = [
+    [0.1, 0.2, 0.3, ...],  # 768-dimensional vector
+    [0.4, 0.5, 0.6, ...],
 ]
 
-encoded_batch = encoder.encode_embeddings(
-    embeddings=embeddings_batch,
-    batch_compression=True, # Apply compression across the entire batch.
-    deduplicate_similar=True, # Deduplicate embeddings that are very similar.
-    similarity_threshold=0.95 # The threshold for deduplication.
+block_id = encoder.add_embeddings_block(
+    embeddings,
+    metadata={"model": "sentence-transformers", "dimensions": 768}
 )
 ```
 
-#### `encode_multimodal(content, **options) -> bytes`
+#### add_video_block
 
-A specialized method for encoding multi-modal content, with options for cross-modal compression and semantic alignment.
+Add video data with optional metadata extraction.
 
 ```python
-# A dictionary representing multi-modal content.
-multimodal_content = {
-    "text": "Product description",
-    "image": "product-photo.jpg",
-    "audio": "product-demo.wav",
-    "metadata": {"product_id": "P123"}
-}
+def add_video_block(
+    self,
+    video_data: bytes,
+    metadata: Optional[Dict] = None,
+    update_block_id: Optional[str] = None,
+    privacy_policy: Optional[PrivacyPolicy] = None,
+    extract_metadata: bool = True,
+    enable_semantic_analysis: bool = True
+) -> str:
+    """
+    Add or update a video block.
 
-# Encode the multi-modal content.
-encoded = encoder.encode_multimodal(
-    content=multimodal_content,
-    
-    # --- Cross-modal Options ---
-    enable_cross_modal_compression=True, # Use cross-modal relationships to improve compression.
-    semantic_alignment=True, # Align the semantic representations of the different modalities.
-    
-    # --- Processing Options ---
-    extract_features=True, # Extract features from all modalities.
-    generate_embeddings=True, # Generate embeddings for all modalities.
-    
-    # --- Optimization ---
-    optimize_for_search=True, # Optimize the encoded structure for fast search.
-    deduplicate_features=True # Deduplicate common features across modalities.
-)
+    Args:
+        video_data: Raw video bytes
+        metadata: Optional metadata dictionary
+        update_block_id: If provided, updates existing block
+        privacy_policy: Privacy policy to apply
+        extract_metadata: Extract video metadata (duration, resolution, etc.)
+        enable_semantic_analysis: Enable semantic analysis of video content
+
+    Returns:
+        Block ID
+    """
 ```
 
-## MAIFDecoder Class
+#### update_text_block
+
+Update an existing text block (creates a new version).
+
+```python
+def update_text_block(
+    self,
+    block_id: str,
+    text: str,
+    metadata: Optional[Dict] = None,
+    privacy_policy: Optional[PrivacyPolicy] = None,
+    anonymize: bool = False
+) -> str:
+    """
+    Update an existing text block.
+
+    Args:
+        block_id: ID of block to update
+        text: New text content
+        metadata: Optional metadata dictionary
+        privacy_policy: Privacy policy to apply
+        anonymize: Apply anonymization
+
+    Returns:
+        Block ID (same as input)
+    """
+```
+
+#### save
+
+Save the encoded data to files.
+
+```python
+def save(
+    self,
+    maif_path: str,
+    manifest_path: Optional[str] = None
+) -> Tuple[str, str]:
+    """
+    Save the MAIF file and manifest.
+
+    Args:
+        maif_path: Path for the binary MAIF file
+        manifest_path: Path for the JSON manifest (defaults to maif_path + '.manifest.json')
+
+    Returns:
+        Tuple of (maif_path, manifest_path)
+    """
+```
+
+**Example:**
+
+```python
+encoder = MAIFEncoder(agent_id="agent-1")
+encoder.add_text_block("Hello")
+encoder.add_text_block("World")
+
+# Save to files
+maif_path, manifest_path = encoder.save("output.maif")
+# Creates: output.maif and output.maif.manifest.json
+```
+
+## MAIFDecoder
+
+The decoder reads MAIF files and provides access to blocks and their content.
+
+### Quick Start
+
+```python
+from maif import MAIFDecoder
+
+# Load a MAIF file
+decoder = MAIFDecoder("data.maif", "data.maif.manifest.json")
+
+# Access blocks
+for block in decoder.blocks:
+    print(f"Block {block.block_id}: {block.block_type}")
+    
+# Read block data
+data = decoder.read_block(decoder.blocks[0])
+```
 
 ### Constructor
 
-The `MAIFDecoder` constructor is also highly configurable, allowing you to control validation, memory management, and error handling.
-
 ```python
-decoder = MAIFDecoder(
-    # --- Decryption Settings ---
-    encryption_key=None,                # The default decryption key. If None, it may be auto-detected.
-    key_derivation_rounds=100000, # The number of rounds for PBKDF2.
-    
-    # --- Performance Settings ---
-    buffer_size=128*1024, # The size of the read buffer.
-    use_mmap=True, # Use memory-mapped I/O for file access.
-    parallel_processing=True, # Enable multi-threaded decoding.
-    
-    # --- Validation Settings ---
-    verify_checksums=True, # Verify the checksum of each block.
-    verify_signatures=True, # Verify the digital signature of the artifact.
-    strict_validation=True, # Fail on any validation error, no matter how small.
-    
-    # --- Memory Management ---
-    lazy_loading=True, # Lazily load data to reduce initial memory usage.
-    cache_decompressed=True, # Cache decompressed blocks to speed up repeated access.
-    max_cache_size=256*1024*1024,       # Set a 256MB limit for the cache.
-    
-    # --- Error Handling ---
-    error_recovery=True, # Attempt to recover from errors where possible.
-    skip_corrupted_blocks=False, # If False, an error on one block will stop the process.
-    
-    # --- Compatibility ---
-    backward_compatibility=True, # Support decoding of older MAIF formats.
-    version_tolerance=True # Tolerate minor version mismatches.
-)
-```
-
-### Core Decoding Methods
-
-#### `decode(encoded_data, **options) -> Any`
-
-Decodes a binary `bytes` object back into a Python object. This is the primary method for decoding single data items.
-
-```python
-# Decode a simple binary object.
-decoded = decoder.decode(encoded_data)
-
-# Decode an object with advanced options.
-decoded = decoder.decode(
-    encoded_data=encoded_bytes,
-    
-    # --- Decryption Options ---
-    encryption_key="custom-key", # Provide the decryption key.
-    verify_signature=True, # Verify the digital signature.
-    
-    # --- Validation Options ---
-    verify_integrity=True, # Perform a full integrity check.
-    validate_schema=True, # Validate the decoded data against its schema.
-    
-    # --- Performance Options ---
-    lazy_load=True, # Lazily load nested data.
-    preload_metadata=True, # Preload all metadata for fast access.
-    
-    # --- Content Options ---
-    include_metadata=True, # Include metadata in the decoded object.
-    include_embeddings=False, # Exclude embeddings from the decoded object.
-    
-    # --- Error Handling ---
-    ignore_errors=False, # Do not ignore any errors during decoding.
-    repair_corruption=True # Attempt to repair any detected corruption.
-)
-```
-
-#### `decode_stream(input_stream, **options) -> Iterator[Any]`
-
-Decodes a stream of binary data, yielding decoded objects. This is ideal for processing large files without loading them into memory.
-
-```python
-# Open a MAIF file for reading in binary mode.
-with open("large-file.maif", "rb") as input_file:
-    # Iterate over the decoded items from the stream.
-    for batch in decoder.decode_stream(
-        input_stream=input_file,
-        
-        # --- Streaming Options ---
-        batch_size=1000, # The number of items to yield in each batch.
-        buffer_size=1024*1024, # The read buffer size (1 MB).
-        
-        # --- Memory Management ---
-        max_memory_usage=256*1024*1024, # The memory limit for the operation.
-        clear_cache_interval=10000, # The number of items after which to clear the cache.
-        
-        # --- Processing Options ---
-        parallel_decoding=True, # Use multiple threads to decode in parallel.
-        validate_each_batch=True, # Validate each batch as it's decoded.
-        
-        # --- Progress Tracking ---
-        progress_callback=lambda p: print(f"Decoded: {p:.1%}") # A function to call with progress updates.
+class MAIFDecoder:
+    def __init__(
+        self,
+        maif_path: str,
+        manifest_path: Optional[str] = None,
+        privacy_engine: Optional[PrivacyEngine] = None,
+        requesting_agent: Optional[str] = None,
+        preload_semantic: bool = False
     ):
-        for item in batch:
-            process_item(item)
+        """
+        Initialize MAIF decoder.
+
+        Args:
+            maif_path: Path to the MAIF binary file
+            manifest_path: Path to the manifest JSON file
+            privacy_engine: Privacy engine for decryption
+            requesting_agent: Agent ID for access control
+            preload_semantic: Preload semantic indices
+
+        Raises:
+            FileNotFoundError: If MAIF file doesn't exist
+        """
 ```
 
-#### `decode_partial(encoded_data, block_ids, **options) -> Dict[str, Any]`
+### Properties
 
-Selectively decodes specific blocks from a larger binary object, which is useful for quickly accessing a subset of data.
+| Property | Type | Description |
+|----------|------|-------------|
+| `blocks` | `List[MAIFBlock]` | List of all blocks in the file |
+| `manifest` | `Dict` | Parsed manifest dictionary |
+| `version_history` | `Dict[str, List[MAIFVersion]]` | Version history by block ID |
+| `block_registry` | `Dict[str, List[MAIFBlock]]` | Block versions by block ID |
+
+### Methods
+
+#### read_block
+
+Read data from a specific block.
 
 ```python
-# Decode only the specified blocks from the binary data.
-specific_blocks = decoder.decode_partial(
-    encoded_data=encoded_bytes,
-    block_ids=["text-block-1", "metadata-block", "embedding-block-5"],
-    
-    # --- Options ---
-    verify_selected_only=True, # Only verify the signatures of the selected blocks.
-    include_dependencies=True, # Also decode any blocks that the selected blocks depend on.
-    lazy_load_references=True # Lazily load any references within the selected blocks.
-)
+def read_block(self, block: MAIFBlock) -> bytes:
+    """
+    Read data from a block.
+
+    Args:
+        block: The block to read
+
+    Returns:
+        Block data bytes (decrypted if necessary)
+    """
 ```
 
-### Specialized Decoding Methods
-
-#### `decode_metadata(encoded_data) -> Dict[str, Any]`
-
-Quickly decodes only the metadata from a binary object without processing the full data payload.
+**Example:**
 
 ```python
-# This is a very fast operation, as it doesn't need to decompress or decrypt the main data.
-metadata = decoder.decode_metadata(encoded_data)
-print(f"Content type: {metadata['content_type']}")
-print(f"Size: {metadata['size']}")
-print(f"Created: {metadata['created_date']}")
+decoder = MAIFDecoder("data.maif", "data.maif.manifest.json")
+
+# Read all text blocks
+for block in decoder.blocks:
+    if block.block_type == "text":
+        data = decoder.read_block(block)
+        print(data.decode('utf-8'))
 ```
 
-#### `decode_embeddings(encoded_embeddings, **options) -> Union[List[float], List[Dict]]`
+#### get_block_by_id
 
-A specialized method for decoding vector embeddings, with options to decompress and format the output.
+Get a specific block by its ID.
 
 ```python
-# Decode a block of encoded embeddings.
-embeddings = decoder.decode_embeddings(
-    encoded_embeddings=encoded_data,
-    
-    # --- Decompression Options ---
-    decompress_quantized=True, # Decompress quantized embeddings.
-    restore_full_precision=True, # Restore the original precision of the embeddings.
-    
-    # --- Format Options ---
-    output_format="numpy",          # The desired output format (e.g., "numpy", "list", "dict").
-    normalize=True, # Normalize the decoded embeddings.
-    
-    # --- Batch Options ---
-    return_metadata=True, # Include metadata in the output.
-    include_ids=True # Include the original IDs of the embeddings.
-)
+def get_block_by_id(self, block_id: str) -> Optional[MAIFBlock]:
+    """
+    Get a block by its ID.
+
+    Args:
+        block_id: The block ID to find
+
+    Returns:
+        MAIFBlock if found, None otherwise
+    """
 ```
 
-## Advanced Features
+#### get_block_versions
 
-### Hierarchical Semantic Compression (HSC)
-
-This example shows how to configure the encoder to use HSC, a novel algorithm that provides better compression for text while preserving its semantic meaning.
+Get all versions of a block.
 
 ```python
-# Configure the encoder to use HSC.
-encoder = MAIFEncoder(
-    semantic_compression=True,
-    hsc_config={
-        "embedding_model": "all-MiniLM-L6-v2", # The embedding model to use for semantic understanding.
-        "compression_ratio": 0.3, # The target compression ratio.
-        "preserve_similarity": True, # Ensure that semantic similarity is preserved.
-        "hierarchical_levels": 3, # The number of hierarchical levels to use.
-        "semantic_threshold": 0.8 # The similarity threshold for semantic deduplication.
-    }
-)
+def get_block_versions(self, block_id: str) -> List[MAIFBlock]:
+    """
+    Get all versions of a block.
 
-# HSC is particularly effective for long documents with repeated concepts.
-text_data = "Long technical document with repeated concepts..."
-encoded = encoder.encode_text(text_data, use_semantic_compression=True)
+    Args:
+        block_id: The block ID
 
-# The decoder will automatically use the HSC model to decompress the data.
-decoded = decoder.decode(encoded)
+    Returns:
+        List of block versions (oldest to newest)
+    """
 ```
 
-### Delta Encoding
+#### get_version_history
 
-This example shows how to use delta encoding to efficiently store incremental changes to data.
+Get the version history for a block.
 
 ```python
-# Enable delta encoding on the encoder.
-encoder = MAIFEncoder(enable_delta_encoding=True)
+def get_version_history(self, block_id: str) -> List[MAIFVersion]:
+    """
+    Get version history for a block.
 
-# Encode the first version of the data.
-version_1 = {"data": "Original content", "version": 1}
-encoded_v1 = encoder.encode(version_1)
+    Args:
+        block_id: The block ID
 
-# Encode the second version as a delta of the first.
-# This will only store the differences, saving significant space.
-version_2 = {"data": "Modified content", "version": 2}
-encoded_v2 = encoder.encode(version_2, delta_base=encoded_v1)
+    Returns:
+        List of MAIFVersion entries
+    """
 ```
 
-### Streaming Operations
+## MAIFBlock
 
-#### `create_stream_encoder(output_stream) -> StreamEncoder`
-
-This method creates a `StreamEncoder` object for a more stateful, continuous encoding process, which is useful for applications like logging or real-time data feeds.
+The `MAIFBlock` dataclass represents a single block in a MAIF file.
 
 ```python
-# Create a streaming encoder that writes to a file.
-with open("continuous-output.maif", "wb") as output:
-    stream_encoder = encoder.create_stream_encoder(output)
-    
-    # In a real application, this would be a continuous stream of data.
-    for data_chunk in continuous_data_stream():
-        stream_encoder.encode_chunk(data_chunk)
-        
-        # Periodically flush the buffer to ensure data is written.
-        if stream_encoder.should_flush():
-            stream_encoder.flush()
-    
-    # Get the final statistics for the entire stream.
-    stats = stream_encoder.get_stats()
-    print(f"Throughput: {stats.avg_throughput_mbps:.1f} MB/s")
+@dataclass
+class MAIFBlock:
+    block_type: str
+    offset: int = 0
+    size: int = 0
+    hash_value: str = ""
+    version: int = 1
+    previous_hash: Optional[str] = None
+    block_id: Optional[str] = None
+    metadata: Optional[Dict] = None
+    data: Optional[bytes] = None
 ```
 
-### Performance Optimization
+### Properties
 
-#### Memory-Mapped Operations
+| Property | Type | Description |
+|----------|------|-------------|
+| `block_type` | `str` | Type of block (e.g., "text", "data", "image") |
+| `offset` | `int` | Byte offset in the MAIF file |
+| `size` | `int` | Size of the block in bytes |
+| `hash_value` | `str` | SHA-256 hash of block data |
+| `version` | `int` | Version number (starts at 1) |
+| `previous_hash` | `str` | Hash of previous version (for updates) |
+| `block_id` | `str` | Unique block identifier (UUID) |
+| `metadata` | `Dict` | Arbitrary metadata dictionary |
+| `data` | `bytes` | Block data (may be lazy-loaded) |
+| `hash` | `str` | Alias for `hash_value` |
 
-This example shows how to use memory-mapped I/O to handle large files without loading their entire content into memory.
+## Block Types
+
+MAIF supports the following standard block types:
 
 ```python
-# Configure the encoder and decoder to use memory-mapped files.
-encoder = MAIFEncoder(use_mmap=True, buffer_size=1024*1024)
-decoder = MAIFDecoder(use_mmap=True, lazy_loading=True)
+from maif.block_types import BlockType
 
-# This will encode the large JSON file without loading it all into memory at once.
-with open("large-input.json", "r") as input_file:
-    large_data = json.load(input_file)
-    encoded = encoder.encode(large_data, streaming=True)
+BlockType.TEXT_DATA      # "text" - UTF-8 text content
+BlockType.BINARY_DATA    # "binr" - Binary data
+BlockType.IMAGE_DATA     # "imag" - Image data
+BlockType.VIDEO_DATA     # "vide" - Video data
+BlockType.AUDIO_DATA     # "audi" - Audio data
+BlockType.EMBEDDING      # "embd" - Vector embeddings
+BlockType.METADATA       # "meta" - Metadata block
+BlockType.CROSS_MODAL    # "xmod" - Cross-modal associations
+BlockType.KNOWLEDGE_GRAPH # "kgra" - Knowledge graph data
+BlockType.SECURITY       # "secu" - Security information
+BlockType.PROVENANCE     # "prov" - Provenance chain
+BlockType.ACCESS_CONTROL # "actl" - Access control rules
+BlockType.LIFECYCLE      # "life" - Lifecycle information
 ```
 
-#### Parallel Processing
-
-This example shows how to configure the encoder to use multiple threads to speed up the encoding of large datasets.
+## Complete Example
 
 ```python
-# Configure the encoder for parallel processing with 8 worker threads.
-encoder = MAIFEncoder(
-    parallel_processing=True,
-    worker_threads=8,
-    chunk_size=64*1024 # The size of the chunks to be processed by each thread.
-)
+from maif import MAIFEncoder, MAIFDecoder
+from maif.privacy import PrivacyPolicy, PrivacyLevel, EncryptionMode
 
-# The encoder will automatically split the dataset into chunks and process them in parallel.
-large_dataset = [{"id": i, "data": f"Item {i}"} for i in range(1000000)]
-encoded = encoder.encode(large_dataset, parallel_chunks=True)
-```
+# Create a MAIF file with mixed content
+encoder = MAIFEncoder(agent_id="demo-agent", enable_privacy=True)
 
-## Performance Monitoring
-
-### Encoding Statistics
-
-The encoder keeps track of detailed statistics about its operations.
-
-```python
-# Get a snapshot of the encoder's performance statistics.
-stats = encoder.get_stats()
-
-print(f"Number of items encoded: {stats.items_encoded}")
-print(f"Total input size (bytes): {stats.input_size_bytes}")
-print(f"Total output size (bytes): {stats.output_size_bytes}")
-print(f"Overall compression ratio: {stats.compression_ratio:.2f}")
-print(f"Average throughput (MB/s): {stats.avg_throughput_mbps:.1f}")
-print(f"Total encoding time (seconds): {stats.total_time_seconds:.2f}s")
-
-# Access statistics for specific algorithms.
-print(f"HSC compression ratio: {stats.hsc_compression_ratio:.2f}")
-print(f"Savings from delta encoding: {stats.delta_savings_percent:.1f}%")
-```
-
-### Profiling
-
-Enable profiling to get a detailed breakdown of the time spent in each part of the encoding and decoding process.
-
-```python
-# Enable profiling on both the encoder and decoder.
-encoder.enable_profiling()
-decoder.enable_profiling()
-
-# Perform some operations to be profiled.
-encoded = encoder.encode(data)
-decoded = decoder.decode(encoded)
-
-# Get the profiling results.
-encoding_profile = encoder.get_profile()
-decoding_profile = decoder.get_profile()
-
-print("Encoding breakdown:")
-for operation, timing in encoding_profile.items():
-    print(f"  {operation}: {timing.avg_ms:.2f}ms")
-```
-
-## Error Handling
-
-The Encoder/Decoder API has a rich set of custom exceptions for robust error handling.
-
-```python
-from maif.exceptions import (
-    EncodingError,     # Base exception for encoding errors.
-    DecodingError,     # Base exception for decoding errors.
-    CompressionError,  # Raised on compression/decompression failures.
-    EncryptionError,   # Raised on encryption/decryption failures.
-    CorruptionError    # Raised when data corruption is detected.
+# Add text content
+doc_id = encoder.add_text_block(
+    "This is a document about AI safety.",
+    metadata={"title": "AI Safety", "category": "research"}
 )
 
-try:
-    encoded = encoder.encode(data)
-    decoded = decoder.decode(encoded)
-    
-except EncodingError as e:
-    logger.error(f"Encoding failed: {e}")
-except DecodingError as e:
-    logger.error(f"Decoding failed: {e}")
-except CompressionError as e:
-    logger.error(f"Compression error: {e}")
-except EncryptionError as e:
-    logger.error(f"Encryption error: {e}")
-except CorruptionError as e:
-    logger.error(f"Data corruption detected: {e}")
-    
-    # If the error is recoverable, attempt to recover the data.
-    if e.recoverable:
-        recovered = decoder.recover_corrupted(encoded, e.corruption_info)
-```
-
-## Best Practices
-
-### Performance Optimization
-
-Follow these best practices to maximize the performance of the Encoder and Decoder.
-
-```python
-# 1. Use larger buffer sizes for large files to reduce the number of I/O operations.
-encoder = MAIFEncoder(buffer_size=1024*1024)  # 1MB buffer
-
-# 2. Enable memory-mapped I/O when working with large datasets.
-encoder = MAIFEncoder(use_mmap=True)
-
-# 3. Use streaming for continuous data feeds or very large files.
-stream_encoder = encoder.create_stream_encoder(output_stream)
-
-# 4. Configure parallel processing to match the number of available CPU cores.
-encoder = MAIFEncoder(parallel_processing=True, worker_threads=cpu_count())
-
-# 5. Choose the compression level based on your use case (speed vs. size).
-encoder = MAIFEncoder(compression=CompressionLevel.FAST)  # For real-time applications.
-```
-
-### Security Best Practices
-
-Follow these best practices to ensure the security of your encoded data.
-
-```python
-# 1. Always verify signatures for critical data to protect against tampering.
-decoder = MAIFDecoder(verify_signatures=True)
-
-# 2. Use a strong encryption algorithm like ChaCha20-Poly1305.
-encoder = MAIFEncoder(
-    encryption=True,
-    encryption_algorithm="ChaCha20-Poly1305"
+# Update the document
+encoder.update_text_block(
+    doc_id,
+    "This is an updated document about AI safety and alignment.",
+    metadata={"title": "AI Safety", "category": "research", "updated": True}
 )
 
-# 3. Enable integrity checking with checksums.
-encoder = MAIFEncoder(generate_checksums=True)
-decoder = MAIFDecoder(verify_checksums=True)
+# Add encrypted sensitive data
+encoder.add_text_block(
+    "Secret research notes",
+    privacy_level=PrivacyLevel.RESTRICTED,
+    encryption_mode=EncryptionMode.AES_GCM
+)
+
+# Add embeddings
+encoder.add_embeddings_block(
+    [[0.1, 0.2, 0.3] * 256],  # 768-dimensional embedding
+    metadata={"model": "ada-002"}
+)
+
+# Save
+encoder.save("research.maif")
+
+# Load and read
+decoder = MAIFDecoder("research.maif", "research.maif.manifest.json")
+
+print(f"Total blocks: {len(decoder.blocks)}")
+
+# Read each block
+for block in decoder.blocks:
+    print(f"\nBlock ID: {block.block_id}")
+    print(f"  Type: {block.block_type}")
+    print(f"  Version: {block.version}")
+    print(f"  Hash: {block.hash_value[:16]}...")
+    
+# Get version history
+history = decoder.get_version_history(doc_id)
+print(f"\nDocument has {len(history)} versions:")
+for v in history:
+    print(f"  v{v.version}: {v.operation} by {v.agent_id}")
 ```
-
-### Memory Management
-
-Follow these best practices to manage the memory usage of the Encoder and Decoder.
-
-```python
-# 1. Use lazy loading when decoding large files to avoid loading everything into memory.
-decoder = MAIFDecoder(lazy_loading=True)
-
-# 2. Configure appropriate cache sizes for your application's access patterns.
-decoder = MAIFDecoder(max_cache_size=256*1024*1024)  # 256MB cache
-
-# 3. Clear the decoder's cache periodically if you are processing many different files.
-decoder.clear_cache()
-
-# 4. Use streaming for memory-efficient processing of large datasets.
-for chunk in decoder.decode_stream(input_stream):
-    process_chunk(chunk)
-```
-
-## Related APIs
-
-- **[MAIFClient](/api/core/client)** - High-level client operations
-- **[Artifact](/api/core/artifact)** - Data container operations
-- **[Privacy Engine](/api/privacy/engine)** - Privacy and encryption features 

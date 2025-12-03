@@ -38,23 +38,49 @@ MAIF (Multimodal Artifact File Format) is a revolutionary file format designed s
 
 ```bash
 # Basic installation
-pip install maif
+pip install -e .
 
 # Full installation with all features
-pip install maif[full]
+pip install -e .[full]
 
 # Development installation
-pip install maif[dev]
+pip install -e .[dev]
 ```
 
 ### Basic Usage
 
 ```python
-from maif import MAIFEncoder, MAIFParser, MAIFSigner
+from maif_api import create_maif, load_maif
+
+# Create a new MAIF artifact
+maif = create_maif("my-agent")
+
+# Add content
+maif.add_text("AI systems need trustworthy data containers")
+
+# Add multimodal content
+maif.add_multimodal({
+    "text": "Additional context",
+    "type": "metadata"
+})
+
+# Save with digital signature
+maif.save("my_data.maif", sign=True)
+
+# Verify integrity
+loaded = load_maif("my_data.maif")
+is_valid = loaded.verify_integrity()
+print(f"File integrity: {'VALID' if is_valid else 'INVALID'}")
+```
+
+### Advanced Usage with Encoder/Decoder
+
+```python
+from maif import MAIFEncoder, MAIFDecoder, MAIFSigner, MAIFVerifier
 from maif.semantic import SemanticEmbedder
 
-# Create a new MAIF file
-encoder = MAIFEncoder()
+# Create with low-level API
+encoder = MAIFEncoder(agent_id="my-agent")
 signer = MAIFSigner(agent_id="my-agent")
 embedder = SemanticEmbedder()
 
@@ -68,43 +94,13 @@ embedding = embedder.embed_text(text)
 embed_hash = encoder.add_embeddings_block([embedding.vector])
 signer.add_provenance_entry("add_embeddings", embed_hash)
 
-# Build and sign MAIF
-encoder.build_maif("my_data.maif", "my_data_manifest.json")
+# Build and save
+encoder.save("my_data.maif", "my_data_manifest.json")
 
-# Sign the manifest
-import json
-with open("my_data_manifest.json", "r") as f:
-    manifest = json.load(f)
-signed_manifest = signer.sign_maif_manifest(manifest)
-with open("my_data_manifest.json", "w") as f:
-    json.dump(signed_manifest, f, indent=2)
-```
-
-### Verification and Analysis
-
-```python
-from maif import MAIFParser, MAIFVerifier
-from maif.forensics import ForensicAnalyzer
-
-# Parse and verify MAIF file
-parser = MAIFParser("my_data.maif", "my_data_manifest.json")
-verifier = MAIFVerifier()
-
-# Check integrity
-integrity_ok = parser.verify_integrity()
-print(f"File integrity: {'VALID' if integrity_ok else 'INVALID'}")
-
-# Verify signatures and provenance
-with open("my_data_manifest.json", "r") as f:
-    manifest = json.load(f)
-manifest_valid, errors = verifier.verify_maif_manifest(manifest)
-print(f"Provenance valid: {manifest_valid}")
-
-# Perform forensic analysis
-analyzer = ForensicAnalyzer()
-report = analyzer.analyze_maif(parser, verifier)
-print(f"Forensic status: {report.integrity_status}")
-print(f"Evidence found: {len(report.evidence)}")
+# Verify
+decoder = MAIFDecoder("my_data.maif", "my_data_manifest.json")
+blocks = list(decoder.read_blocks())
+print(f"Loaded {len(blocks)} blocks")
 ```
 
 ## Architecture

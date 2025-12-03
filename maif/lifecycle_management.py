@@ -166,11 +166,11 @@ class MAIFMerger:
         output_encoder.build_maif(output_path, str(output_manifest))
         
         # Validate merged MAIF
-        is_valid, validation_errors = self.validator.validate_maif(output_path)
+        validation_result = self.validator.validate_file(output_path, str(output_manifest))
         
         stats["merge_time"] = time.time() - start_time
-        stats["is_valid"] = is_valid
-        stats["validation_errors"] = validation_errors
+        stats["is_valid"] = validation_result.is_valid
+        stats["validation_errors"] = validation_result.errors
         
         logger.info(f"Merge completed: {stats['merged_blocks']} blocks merged, "
                    f"{stats['duplicate_blocks']} duplicates removed")
@@ -376,13 +376,27 @@ class MAIFSplitter:
             if block_type not in type_encoders:
                 type_encoders[block_type] = MAIFEncoder()
             
-            block_data = decoder.get_block_data(block)
+            # Get block data using block_id
+            block_data = decoder.get_block_data(block.block_id)
             
-            if block_type == "text":
-                type_encoders[block_type].add_text_block(
-                    block_data.decode('utf-8'),
-                    block.metadata
-                )
+            # Skip if no data
+            if block_data is None:
+                block_data = b''
+            
+            if block_type == "text" or block_type == "TEXT":
+                try:
+                    text_content = block_data.decode('utf-8') if block_data else ""
+                    type_encoders[block_type].add_text_block(
+                        text_content,
+                        block.metadata
+                    )
+                except UnicodeDecodeError:
+                    # If can't decode as text, treat as binary
+                    type_encoders[block_type].add_binary_block(
+                        block_data,
+                        block_type,
+                        block.metadata
+                    )
             else:
                 type_encoders[block_type].add_binary_block(
                     block_data,
