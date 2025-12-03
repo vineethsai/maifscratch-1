@@ -1,0 +1,95 @@
+{
+  "name": "maif-docs",
+  "version": "1.0.0",
+  "description": "MAIF Documentation - Multi-Agent Intelligence Framework",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "serve": "vitepress serve",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --ext .js,.ts,.vue",
+    "format": "prettier --write .",
+    "deploy": "npm run build && ./deploy.sh",
+    "deploy:github": "npm run build && gh-pages -d .vitepress/dist",
+    "deploy:netlify": "npm run build && netlify deploy --prod --dir=.vitepress/dist",
+    "deploy:vercel": "npm run build && vercel --prod",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "keywords": [
+    "maif",
+    "multi-agent",
+    "ai",
+    "framework",
+    "documentation",
+    "vitepress"
+  ],
+  "author": "MAIF Team",
+  "license": "MIT",
+  "homepage": "https://yourusername.github.io/maif/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/maif.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/maif/issues"
+  },
+  "devDependencies": {
+    "@mdit/plugin-align": "^0.11.0",
+    "@mdit/plugin-attrs": "^0.11.0",
+    "@mdit/plugin-footnote": "^0.11.0",
+    "@mdit/plugin-mark": "^0.11.0",
+    "@mdit/plugin-spoiler": "^0.11.0",
+    "@mdit/plugin-sub": "^0.11.0",
+    "@mdit/plugin-sup": "^0.11.0",
+    "@playwright/test": "^1.40.1",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/ui": "^1.1.0",
+    "algoliasearch": "^4.22.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-vue": "^9.19.2",
+    "feed": "^4.2.2",
+    "flexsearch": "^0.7.31",
+    "gh-pages": "^6.1.0",
+    "jsdom": "^23.0.1",
+    "markdown-it": "^14.1.0",
+    "markdown-it-anchor": "^8.6.7",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-emoji": "^3.0.0",
+    "markdown-it-table-of-contents": "^0.6.0",
+    "medium-zoom": "^1.1.0",
+    "mermaid": "^10.6.1",
+    "netlify-cli": "^17.10.1",
+    "playwright": "^1.40.1",
+    "prettier": "^3.1.1",
+    "sitemap": "^7.1.1",
+    "typescript": "^5.3.0",
+    "vercel": "^32.7.2",
+    "vitepress": "^1.0.0",
+    "vitest": "^1.1.0",
+    "vue-tsc": "^1.8.27",
+    "workbox-window": "^7.0.0"
+  },
+  "dependencies": {
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "vue": "^3.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/maif-ai"
+  }
+}

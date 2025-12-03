@@ -1,0 +1,456 @@
+/* Custom styles for MAIF documentation */
+
+/* Fix code overflow issues */
+.vp-code-group .tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vp-c-divider) transparent;
+}
+
+.vp-code-group .tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.vp-code-group .tabs::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 2px;
+}
+
+.vp-code-group .tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Code block improvements */
+div[class*="language-"] {
+  position: relative;
+  margin: 16px 0;
+  background-color: var(--vp-code-block-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+div[class*="language-"] pre {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vp-c-divider) transparent;
+}
+
+div[class*="language-"] pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+div[class*="language-"] pre::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 3px;
+}
+
+div[class*="language-"] pre code {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  width: fit-content;
+  min-width: 100%;
+  line-height: 1.7;
+  font-size: 14px;
+  color: var(--vp-code-block-color);
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  tab-size: 4;
+  hyphens: none;
+}
+
+/* Inline code improvements */
+:not(pre) > code {
+  background-color: var(--vp-code-bg);
+  color: var(--vp-code-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* Enhanced Mermaid diagram styling with zoom support */
+.mermaid, .mermaid-rendered, .mermaid-enhanced {
+  text-align: center;
+  margin: 2rem 0;
+  overflow-x: auto;
+  background: var(--vp-c-bg);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid var(--vp-c-divider);
+  position: relative;
+}
+
+.mermaid svg, .mermaid-rendered svg, .mermaid-enhanced svg {
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+  transition: all 0.3s ease;
+  min-height: 300px; /* Ensure diagrams have minimum readable size */
+}
+
+.mermaid svg:hover, .mermaid-rendered svg:hover, .mermaid-enhanced svg:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: scale(1.02);
+}
+
+/* Large diagram support */
+.mermaid.large-diagram, .mermaid-enhanced.large-diagram {
+  overflow: visible;
+  padding: 2rem;
+}
+
+.mermaid.large-diagram svg, .mermaid-enhanced.large-diagram svg {
+  min-width: 800px;
+  min-height: 400px;
+}
+
+/* Zoom overlay styling */
+.medium-zoom-overlay {
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+.medium-zoom-image {
+  cursor: zoom-out !important;
+}
+
+/* Ensure code blocks with mermaid are visible until processed */
+pre code.language-mermaid {
+  display: block;
+}
+
+.language-mermaid {
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.mermaid-error {
+  background: var(--vp-c-danger-soft);
+  color: var(--vp-c-danger);
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  div[class*="language-"] pre code {
+    font-size: 12px;
+    padding: 1rem;
+  }
+  
+  .mermaid {
+    font-size: 12px;
+    padding: 0.5rem;
+    margin: 1rem 0;
+  }
+  
+  :not(pre) > code {
+    font-size: 0.8em;
+    padding: 1px 4px;
+  }
+}
+
+/* Table improvements for better readability */
+.vp-doc table {
+  overflow-x: auto;
+  display: block;
+  white-space: nowrap;
+}
+
+.vp-doc table th,
+.vp-doc table td {
+  padding: 8px 16px;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Performance metrics styling */
+.performance-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.metric-card {
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--vp-c-brand);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Feature grid styling */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--vp-c-brand);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--vp-c-text-1);
+}
+
+.feature-description {
+  color: var(--vp-c-text-2);
+  line-height: 1.6;
+}
+
+/* Algorithm showcase styling */
+.algorithm-showcase {
+  background: linear-gradient(135deg, var(--vp-c-bg-soft) 0%, var(--vp-c-bg-alt) 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem 0;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.algorithm-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--vp-c-brand);
+  text-align: center;
+}
+
+.algorithm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.algorithm-item {
+  background: var(--vp-c-bg);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border-left: 4px solid var(--vp-c-brand);
+}
+
+.algorithm-name {
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin-bottom: 0.5rem;
+}
+
+.algorithm-desc {
+  font-size: 0.875rem;
+  color: var(--vp-c-text-2);
+  line-height: 1.5;
+}
+
+/* Comparison table styling */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  background: var(--vp-c-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-table th {
+  background: var(--vp-c-brand);
+  color: white;
+  font-weight: 600;
+  padding: 1rem;
+  text-align: left;
+}
+
+.comparison-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.comparison-table tr:nth-child(even) {
+  background: var(--vp-c-bg-soft);
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.success {
+  background: var(--vp-c-success-soft);
+  color: var(--vp-c-success);
+}
+
+.status-badge.warning {
+  background: var(--vp-c-warning-soft);
+  color: var(--vp-c-warning);
+}
+
+.status-badge.error {
+  background: var(--vp-c-danger-soft);
+  color: var(--vp-c-danger);
+}
+
+/* Dark mode adjustments */
+.dark .mermaid {
+  background: var(--vp-c-bg-alt);
+}
+
+.dark .feature-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.dark .comparison-table {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Code block horizontal scrolling */
+pre code {
+  white-space: pre;
+  overflow-x: auto;
+  display: block;
+  padding: 1rem;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.language-python,
+.language-javascript,
+.language-typescript,
+.language-bash,
+.language-json,
+.language-yaml {
+  overflow-x: auto;
+  word-wrap: break-word;
+}
+
+/* Mermaid diagram styles */
+.mermaid-rendered {
+  text-align: center;
+  margin: 2rem 0;
+  overflow-x: auto;
+  background: transparent;
+}
+
+.mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.dark .mermaid-error {
+  color: #fca5a5;
+  background: #450a0a;
+  border-color: #991b1b;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  pre code {
+    font-size: 12px;
+    padding: 0.75rem;
+  }
+  
+  .mermaid-rendered {
+    font-size: 12px;
+    margin: 1rem 0;
+  }
+  
+  .mermaid-rendered svg {
+    font-size: 12px;
+  }
+}
+
+/* Loading state for diagrams */
+.mermaid-loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--vp-c-text-2);
+  font-style: italic;
+}
+
+.mermaid-loading::before {
+  content: "Loading diagram...";
+}
+
+/* Ensure proper spacing */
+.vp-doc div[class*="language-"] {
+  margin: 16px 0;
+}
+
+.vp-doc .mermaid-rendered {
+  margin: 24px 0;
+}
+
+/* Fix for dark mode diagram visibility */
+.dark .mermaid-rendered {
+  filter: brightness(0.9);
+}
+
+/* Performance optimization */
+.mermaid-rendered svg {
+  will-change: transform;
+} 
