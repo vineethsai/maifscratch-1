@@ -16,7 +16,7 @@ pip install -r requirements_novel_algorithms.txt
 python3 test_novel_algorithms.py
 
 # 3. See full demo
-python3 examples/novel_algorithms_demo.py
+python3 examples/advanced/novel_algorithms_demo.py
 ```
 
 ## Even Easier (1 command)
@@ -68,7 +68,7 @@ encoder.build_maif("output.maif", "manifest.json")
 ## Files You Care About
 
 - `test_novel_algorithms.py` - Quick 30-second test
-- `examples/novel_algorithms_demo.py` - Full demonstration
+- `examples/advanced/novel_algorithms_demo.py` - Full demonstration
 - `maif/semantic.py` - All algorithm implementations
 - `NOVEL_ALGORITHMS_IMPLEMENTATION.md` - Complete documentation
 

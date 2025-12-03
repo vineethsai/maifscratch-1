@@ -504,7 +504,7 @@ from maif.security import HSMProvider
 
 # Configure HSM
 hsm = HSMProvider(
-    provider="AWS_CloudHSM",
+    provider="local",  # AWS CloudHSM removed
     cluster_id="cluster-12345",
     partition="production"
 )

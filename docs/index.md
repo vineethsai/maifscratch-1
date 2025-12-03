@@ -190,7 +190,7 @@ MAIF implements three cutting-edge algorithms that push the boundaries of AI cap
 
 **Next Steps:**
 1. **[Get Started →](/guide/getting-started)** - 5-minute tutorial
-2. **[View Examples →](/examples/)** - Real-world use cases  
+2. **[View Examples →](https://github.com/vineethsai/maifscratch-1/tree/main/examples)** - Real-world use cases  
 3. **[API Reference →](/api/)** - Complete documentation
 4. **[Join Community →](https://discord.gg/maif)** - Get help and share ideas
 

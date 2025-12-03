@@ -141,7 +141,7 @@ The following new methods have been added to `maif/core.py`:
 
 ### Novel Algorithms Demo
 
-**Location**: `examples/novel_algorithms_demo.py`
+**Location**: `examples/advanced/novel_algorithms_demo.py`
 
 **Features**:
 - Complete demonstration of all three novel algorithms
