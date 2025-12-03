@@ -57,23 +57,53 @@ pip install -e ".[full]"
 ## Installation
 
 ```bash
+# Basic installation
 pip install -e .
+
+# With optional features
+pip install -e ".[full]"  # All features
+pip install -e ".[ml]"    # Machine learning features
+pip install -e ".[dev]"   # Development tools
 ```
 
 ## Quick Start
 
+### Basic Usage
+
 ```python
-from maif_api import create_maif
+from maif_api import create_maif, load_maif
 
-# Create artifact
+# Create artifact with cryptographic provenance
 maif = create_maif("my_agent")
-maif.add_text("Hello world!", title="Greeting")
-maif.save("artifact.maif")
+maif.add_text("Agent conversation data", title="Session 1")
+maif.save("agent_memory.maif")
 
-# Load and verify
-loaded = load_maif("artifact.maif")
-assert loaded.verify_integrity()  # Cryptographic verification
+# Load and verify integrity
+loaded = load_maif("agent_memory.maif")
+assert loaded.verify_integrity()  # Cryptographic hash chain verification
 ```
+
+### Multi-Agent RAG System (Featured Example)
+
+Complete production-ready system with LangGraph orchestration and MAIF provenance:
+
+```bash
+cd examples/langgraph
+
+# Setup
+echo "GEMINI_API_KEY=your_key" > .env
+pip install -r requirements_enhanced.txt
+
+# Create knowledge base with embeddings
+python3 create_kb_enhanced.py
+
+# Run interactive demo
+python3 demo_enhanced.py
+```
+
+Features: ChromaDB vector search, Gemini API, LLM fact-checking, cryptographic audit trails, multi-turn conversations.
+
+See `examples/langgraph/README.md` for complete documentation.
 
 ## Examples
 
