@@ -58,7 +58,7 @@ def retrieve_node_hybrid(state: RAGState) -> RAGState:
     
     if use_web:
         best_score = local_chunks[0]['score'] if local_chunks else 0
-    print(f"\n   ℹ️  Local KB doesn't have good answer (best score: {best_score:.3f})")
+        print(f"\n   ℹ️  Local KB doesn't have good answer (best score: {best_score:.3f})")
         print(f"   🌐 Falling back to web search...")
         
         # Search web
