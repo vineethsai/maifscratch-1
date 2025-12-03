@@ -1,0 +1,108 @@
+site_name: MAIF Documentation
+site_description: Multimodal Artifact File Format - Cryptographic provenance for AI agents
+site_author: MAIF Development Team
+site_url: https://vineethsai.github.io/maifscratch-1
+
+repo_name: vineethsai/maifscratch-1
+repo_url: https://github.com/vineethsai/maifscratch-1
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: INSTALLATION.md
+    - Painless Setup: PAINLESS_SETUP.md
+    - Quick Start: guide/quick-start.md
+  - User Guide:
+    - Concepts: guide/concepts.md
+    - Architecture: guide/architecture.md
+    - Blocks: guide/blocks.md
+    - Security: guide/security-model.md
+    - Privacy: guide/privacy.md
+    - Streaming: guide/streaming.md
+    - Semantic Features: guide/semantic.md
+    - Multimodal: guide/multimodal.md
+    - Agent Development: guide/agent-development.md
+    - Agent Lifecycle: guide/agent-lifecycle.md
+    - Performance: guide/performance.md
+    - Monitoring: guide/monitoring.md
+    - Distributed: guide/distributed.md
+    - ACID: guide/acid.md
+  - API Reference:
+    - Overview: api/index.md
+    - Core API: api/core/
+    - Privacy API: api/privacy/
+    - Security API: api/security/
+  - Examples:
+    - Overview: examples/index.md
+    - Hello World: examples/hello-world.md
+    - Multi-Agent: examples/multi-agent.md
+    - Privacy Demo: examples/privacy-demo.md
+    - Streaming: examples/streaming.md
+    - Financial Agent: examples/financial-agent.md
+    - Distributed: examples/distributed.md
+  - Features:
+    - Overview: MAIF_FEATURES.md
+    - Simple API: SIMPLE_API_GUIDE.md
+    - Novel Algorithms: NOVEL_ALGORITHMS_IMPLEMENTATION.md
+    - Paper Alignment: PAPER_CODE_ALIGNMENT.md
+  - Benchmarks:
+    - Summary: BENCHMARK_SUMMARY.md
+    - Benchmarks README: benchmarks_README.md
+  - Reference:
+    - Security Table: MAIF_Security_Verifications_Table.md
+    - AWS Info: AWS_REFERENCE.md
+    - Main README: MAIF_README.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - git-revision-date-localized
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/vineethsai/maifscratch-1
+
