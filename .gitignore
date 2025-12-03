@@ -88,3 +88,12 @@ examples/langgraph/data/chroma_db/*.sqlite3
 examples/langgraph/data/chroma_db/**/data_level0.bin
 examples/langgraph/examples/langgraph/data/
 
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
