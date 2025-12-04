@@ -119,7 +119,7 @@ def check_artifact_health(artifact_path: str) -> dict:
     try:
         artifact = load_maif(artifact_path)
         status["readable"] = True
-        status["integrity"] = artifact.verify_integrity()
+        status["integrity"] = artifact.verify()
         status["content_count"] = len(artifact.get_content_list())
     except Exception as e:
         status["error"] = str(e)
@@ -168,7 +168,7 @@ class ArtifactMonitor:
         
         try:
             artifact = load_maif(path)
-            status["healthy"] = artifact.verify_integrity()
+            status["healthy"] = artifact.verify()
             status["blocks"] = len(artifact.get_content_list())
         except Exception as e:
             status["error"] = str(e)
@@ -355,7 +355,7 @@ class HealthHandler(BaseHTTPRequestHandler):
         if os.path.exists(sample_path):
             try:
                 artifact = load_maif(sample_path)
-                status['checks']['sample_artifact'] = artifact.verify_integrity()
+                status['checks']['sample_artifact'] = artifact.verify()
             except:
                 status['checks']['sample_artifact'] = False
         

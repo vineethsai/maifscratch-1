@@ -679,7 +679,7 @@ class MAIFBenchmarkSuite:
                     # Test detection
                     detection_start = time.time()
                     decoder = MAIFDecoder(maif_path, manifest_path)
-                    is_valid = decoder.verify_integrity()
+                    is_valid, errors = decoder.verify_integrity()
                     detection_end = time.time()
                     
                     detection_time_ms = (detection_end - detection_start) * 1000
@@ -738,7 +738,7 @@ class MAIFBenchmarkSuite:
                     # Benchmark verification
                     verify_start = time.time()
                     decoder = MAIFDecoder(maif_path, manifest_path)
-                    is_valid = decoder.verify_integrity()
+                    is_valid, errors = decoder.verify_integrity()
                     verify_end = time.time()
                     
                     verification_time = verify_end - verify_start

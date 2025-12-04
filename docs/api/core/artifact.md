@@ -318,7 +318,7 @@ loaded = load_maif("data.maif")
 content = loaded.get_content_list()
 
 # Verify integrity
-is_valid = loaded.verify_integrity()
+is_valid = loaded.verify()
 
 # Search content
 results = loaded.search("important", top_k=5)

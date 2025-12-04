@@ -22,7 +22,7 @@ def verify_artifact(path: str) -> bool:
     """Verify artifact integrity."""
     try:
         artifact = load_maif(path)
-        is_valid = artifact.verify_integrity()
+        is_valid = artifact.verify()
         
         if is_valid:
             print(f"✅ {path}: Integrity verified")

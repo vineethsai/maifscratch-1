@@ -359,7 +359,7 @@ maif.save("output.maif", sign=True)
 loaded = load_maif("output.maif")
 
 # Verify
-is_valid = loaded.verify_integrity()
+is_valid = loaded.verify()
 
 # Search
 results = loaded.search("query", top_k=5)

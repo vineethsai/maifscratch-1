@@ -69,7 +69,7 @@ maif.save("my_data.maif", sign=True)
 
 # Verify integrity
 loaded = load_maif("my_data.maif")
-is_valid = loaded.verify_integrity()
+is_valid = loaded.verify()
 print(f"File integrity: {'VALID' if is_valid else 'INVALID'}")
 ```
 

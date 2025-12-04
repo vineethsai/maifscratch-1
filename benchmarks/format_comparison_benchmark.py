@@ -2,8 +2,11 @@
 """
 MAIF Format Comparison Benchmark
 
-Compares the legacy MAIF format (with external manifest) vs the new 
-Secure MAIF format (self-contained, immutable, tamper-evident).
+Compares different configurations of the secure MAIF format to measure
+baseline performance metrics and demonstrate the secure format capabilities.
+
+Note: Both "legacy" and "secure" now use the same SecureMAIFWriter API,
+as the v3 format is self-contained with Ed25519 signatures.
 
 Metrics compared:
 1. File creation speed
@@ -65,7 +68,13 @@ class BenchmarkMetrics:
 
 
 class FormatComparisonBenchmark:
-    """Benchmark suite comparing legacy and secure MAIF formats."""
+    """
+    Benchmark suite for the secure MAIF format (v3).
+    
+    Note: Both "legacy" and "secure" test cases now use SecureMAIFWriter,
+    as the v3 format is self-contained with Ed25519 signatures.
+    This benchmark measures baseline performance characteristics.
+    """
     
     def __init__(self, output_dir: str = "benchmark_results"):
         self.output_dir = Path(output_dir)
@@ -121,12 +130,11 @@ class FormatComparisonBenchmark:
                 legacy_times_for_size = []
                 for i in range(self.iterations):
                     start = time.time()
-                    encoder = MAIFEncoder(agent_id="benchmark-agent")
+                    maif_path = os.path.join(tmpdir, f"legacy_{size}_{i}.maif")
+                    encoder = MAIFEncoder(maif_path, agent_id="benchmark-agent")
                     for text in test_data:
                         encoder.add_text_block(text)
-                    maif_path = os.path.join(tmpdir, f"legacy_{size}_{i}.maif")
-                    manifest_path = os.path.join(tmpdir, f"legacy_{size}_{i}_manifest.json")
-                    encoder.build_maif(maif_path, manifest_path)
+                    encoder.finalize()
                     legacy_times_for_size.append(time.time() - start)
                 legacy_times.extend(legacy_times_for_size)
                 
@@ -182,14 +190,13 @@ class FormatComparisonBenchmark:
                     raw_data_size = sum(len(t.encode('utf-8')) for t in test_data)
                     data_sizes.append(raw_data_size)
                     
-                    # Legacy format
-                    encoder = MAIFEncoder(agent_id="benchmark-agent")
+                    # Legacy format (now using SecureMAIFWriter API)
+                    maif_path = os.path.join(tmpdir, f"legacy_{size}_{block_count}.maif")
+                    encoder = MAIFEncoder(maif_path, agent_id="benchmark-agent")
                     for text in test_data:
                         encoder.add_text_block(text)
-                    maif_path = os.path.join(tmpdir, f"legacy_{size}_{block_count}.maif")
-                    manifest_path = os.path.join(tmpdir, f"legacy_{size}_{block_count}_manifest.json")
-                    encoder.build_maif(maif_path, manifest_path)
-                    legacy_total = os.path.getsize(maif_path) + os.path.getsize(manifest_path)
+                    encoder.finalize()
+                    legacy_total = os.path.getsize(maif_path)
                     legacy_sizes.append(legacy_total)
                     
                     # Secure format
@@ -243,13 +250,12 @@ class FormatComparisonBenchmark:
             for size in [1000, 10000, 50000]:
                 test_data = self._generate_test_data(size, 20)
                 
-                # Create files
-                encoder = MAIFEncoder(agent_id="benchmark-agent")
+                # Create files (both formats now use same API)
+                legacy_path = os.path.join(tmpdir, f"legacy_{size}.maif")
+                encoder = MAIFEncoder(legacy_path, agent_id="benchmark-agent")
                 for text in test_data:
                     encoder.add_text_block(text)
-                legacy_path = os.path.join(tmpdir, f"legacy_{size}.maif")
-                legacy_manifest = os.path.join(tmpdir, f"legacy_{size}_manifest.json")
-                encoder.build_maif(legacy_path, legacy_manifest)
+                encoder.finalize()
                 
                 secure_path = os.path.join(tmpdir, f"secure_{size}.maif")
                 writer = SecureMAIFWriter(secure_path, agent_id="benchmark-agent")
@@ -261,8 +267,9 @@ class FormatComparisonBenchmark:
                 legacy_read_times = []
                 for _ in range(self.iterations):
                     start = time.time()
-                    decoder = MAIFDecoder(legacy_path, legacy_manifest)
-                    blocks = decoder.get_text_blocks()
+                    decoder = MAIFDecoder(legacy_path)
+                    decoder.load()
+                    blocks = decoder.get_blocks()
                     legacy_read_times.append(time.time() - start)
                 legacy_times.extend(legacy_read_times)
                 
@@ -307,13 +314,12 @@ class FormatComparisonBenchmark:
             for block_count in [10, 50, 100]:
                 test_data = self._generate_test_data(5000, block_count)
                 
-                # Create files
-                encoder = MAIFEncoder(agent_id="benchmark-agent")
+                # Create files (both formats now use same API)
+                legacy_path = os.path.join(tmpdir, f"legacy_{block_count}.maif")
+                encoder = MAIFEncoder(legacy_path, agent_id="benchmark-agent")
                 for text in test_data:
                     encoder.add_text_block(text)
-                legacy_path = os.path.join(tmpdir, f"legacy_{block_count}.maif")
-                legacy_manifest = os.path.join(tmpdir, f"legacy_{block_count}_manifest.json")
-                encoder.build_maif(legacy_path, legacy_manifest)
+                encoder.finalize()
                 
                 secure_path = os.path.join(tmpdir, f"secure_{block_count}.maif")
                 writer = SecureMAIFWriter(secure_path, agent_id="benchmark-agent")
@@ -325,8 +331,8 @@ class FormatComparisonBenchmark:
                 legacy_verify_times = []
                 for _ in range(self.iterations):
                     start = time.time()
-                    decoder = MAIFDecoder(legacy_path, legacy_manifest)
-                    result = decoder.verify_integrity()
+                    decoder = MAIFDecoder(legacy_path)
+                    is_valid, errors = decoder.verify_integrity()
                     legacy_verify_times.append(time.time() - start)
                 legacy_times.extend(legacy_verify_times)
                 
@@ -375,13 +381,12 @@ class FormatComparisonBenchmark:
                 test_data = self._generate_test_data(1000, 10)
                 total_tests += 1
                 
-                # Create legacy file
-                encoder = MAIFEncoder(agent_id="benchmark-agent")
+                # Create legacy file (now uses secure API)
+                legacy_path = os.path.join(tmpdir, f"legacy_tamper_{test_num}.maif")
+                encoder = MAIFEncoder(legacy_path, agent_id="benchmark-agent")
                 for text in test_data:
                     encoder.add_text_block(text)
-                legacy_path = os.path.join(tmpdir, f"legacy_tamper_{test_num}.maif")
-                legacy_manifest = os.path.join(tmpdir, f"legacy_tamper_{test_num}_manifest.json")
-                encoder.build_maif(legacy_path, legacy_manifest)
+                encoder.finalize()
                 
                 # Create secure file
                 secure_path = os.path.join(tmpdir, f"secure_tamper_{test_num}.maif")
@@ -411,8 +416,8 @@ class FormatComparisonBenchmark:
                 # Test legacy detection
                 start = time.time()
                 try:
-                    decoder = MAIFDecoder(legacy_path, legacy_manifest)
-                    is_valid = decoder.verify_integrity()
+                    decoder = MAIFDecoder(legacy_path)
+                    is_valid, errors = decoder.verify_integrity()
                     if not is_valid:
                         legacy_detections += 1
                 except Exception:
@@ -472,14 +477,13 @@ class FormatComparisonBenchmark:
             for block_count in [10, 50, 100, 200]:
                 test_data = self._generate_test_data(2000, block_count)
                 
-                # Legacy
+                # Legacy (now uses secure API)
+                legacy_path = os.path.join(tmpdir, f"scale_legacy_{block_count}.maif")
                 start = time.time()
-                encoder = MAIFEncoder(agent_id="benchmark-agent")
+                encoder = MAIFEncoder(legacy_path, agent_id="benchmark-agent")
                 for text in test_data:
                     encoder.add_text_block(text)
-                legacy_path = os.path.join(tmpdir, f"scale_legacy_{block_count}.maif")
-                legacy_manifest = os.path.join(tmpdir, f"scale_legacy_{block_count}_manifest.json")
-                encoder.build_maif(legacy_path, legacy_manifest)
+                encoder.finalize()
                 legacy_create_time = time.time() - start
                 
                 # Secure
@@ -491,7 +495,7 @@ class FormatComparisonBenchmark:
                 writer.finalize()
                 secure_create_time = time.time() - start
                 
-                legacy_size = os.path.getsize(legacy_path) + os.path.getsize(legacy_manifest)
+                legacy_size = os.path.getsize(legacy_path)
                 secure_size = os.path.getsize(secure_path)
                 
                 scalability_results[block_count] = {

@@ -109,7 +109,7 @@ maif.save("secure.maif", sign=True)
 
 # Verify integrity
 loaded = maif.load("secure.maif")
-is_valid = loaded.verify_integrity()
+is_valid = loaded.verify()
 ```
 
 **Features:**

@@ -243,7 +243,7 @@ class ReplicatedStore:
             if results[replica]["exists"]:
                 try:
                     artifact = load_maif(path)
-                    results[replica]["valid"] = artifact.verify_integrity()
+                    results[replica]["valid"] = artifact.verify()
                 except:
                     pass
         return results
