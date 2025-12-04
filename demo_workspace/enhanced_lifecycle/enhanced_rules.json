@@ -1,0 +1,63 @@
+[
+  {
+    "rule_id": "custom_size_rule",
+    "name": "Custom Size Rule",
+    "description": "Split files larger than 20MB",
+    "priority": 80,
+    "trigger": "metric",
+    "condition": {
+      "type": "metric",
+      "metric_name": "size_bytes",
+      "operator": "gt",
+      "threshold": 20971520
+    },
+    "actions": [
+      {
+        "action_type": "split",
+        "parameters": [
+          {
+            "name": "strategy",
+            "value": "size"
+          },
+          {
+            "name": "max_size_mb",
+            "value": 10.0
+          }
+        ]
+      }
+    ],
+    "status": "active"
+  },
+  {
+    "rule_id": "custom_composite_rule",
+    "name": "Custom Composite Rule",
+    "description": "Optimize files with high access and low fragmentation",
+    "priority": 90,
+    "trigger": "composite",
+    "condition": {
+      "type": "composite",
+      "operator": "and",
+      "conditions": [
+        {
+          "type": "metric",
+          "metric_name": "access_frequency",
+          "operator": "gt",
+          "threshold": 5.0
+        },
+        {
+          "type": "metric",
+          "metric_name": "fragmentation",
+          "operator": "lt",
+          "threshold": 0.3
+        }
+      ]
+    },
+    "actions": [
+      {
+        "action_type": "optimize",
+        "parameters": []
+      }
+    ],
+    "status": "active"
+  }
+]

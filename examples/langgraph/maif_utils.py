@@ -22,6 +22,7 @@ from maif.block_storage import BlockStorage
 from maif.block_types import BlockType
 from maif import MAIFEncoder, MAIFDecoder
 from maif.security import MAIFSigner
+from maif.secure_format import SecureBlockType
 
 
 class SessionManager:
@@ -56,7 +57,7 @@ class SessionManager:
         
         encoder.add_binary_block(
             data=json.dumps(session_metadata).encode('utf-8'),
-            block_type="BDAT",  # Binary data - 4 chars
+            block_type=SecureBlockType.BINARY,
             metadata={"type": "session_init"}
         )
         
@@ -122,7 +123,7 @@ class SessionManager:
                 retrieval_data.update(metadata)
             
             block_id = storage.add_block(
-                block_type="BDAT",  # Binary data - 4 chars
+                block_type="BDAT",  # BlockStorage uses 4-char string types
                 data=json.dumps(retrieval_data).encode('utf-8'),
                 metadata={"type": "retrieval_event"}
             )
@@ -169,7 +170,7 @@ class SessionManager:
             })
             
             block_id = storage.add_block(
-                block_type="BDAT",  # Binary data - 4 chars
+                block_type="BDAT",  # BlockStorage uses 4-char string types
                 data=json.dumps(verification_results).encode('utf-8'),
                 metadata=verif_metadata
             )
@@ -193,7 +194,7 @@ class SessionManager:
             })
             
             block_id = storage.add_block(
-                block_type="BDAT",  # Binary data - 4 chars
+                block_type="BDAT",  # BlockStorage uses 4-char string types
                 data=json.dumps({"citations": citations}).encode('utf-8'),
                 metadata=citation_metadata
             )
@@ -279,7 +280,7 @@ class KBManager:
         
         encoder.add_binary_block(
             data=json.dumps(doc_meta).encode('utf-8'),
-            block_type="METADATA",
+            block_type=SecureBlockType.METADATA,
             metadata={"type": "document_metadata"}
         )
         
@@ -307,7 +308,7 @@ class KBManager:
                 
                 encoder.add_binary_block(
                     data=embedding_bytes,
-                    block_type="EMBEDDING",
+                    block_type=SecureBlockType.EMBEDDINGS,
                     metadata={
                         "chunk_index": i,
                         "doc_id": doc_id,
