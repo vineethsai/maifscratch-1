@@ -243,7 +243,7 @@ def demonstrate_provenance(maif_path: str):
     print(f"\n  Recorded {len(provenance)} operations:")
     
     for entry in provenance:
-        print(f"    • {entry.operation} by {entry.agent_id}")
+        print(f"    • {entry.action} by {entry.agent_id}")
 
 
 def main():

@@ -1,0 +1,16 @@
+[
+  {
+    "rule_id": "small_file_merge",
+    "condition": "metrics.size_bytes < 1048576 and metrics.block_count < 10",
+    "action": "merge_similar",
+    "priority": 6,
+    "enabled": true
+  },
+  {
+    "rule_id": "optimize_frequent",
+    "condition": "metrics.access_frequency > 5.0",
+    "action": "optimize_hot",
+    "priority": 8,
+    "enabled": true
+  }
+]

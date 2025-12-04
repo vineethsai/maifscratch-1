@@ -77,8 +77,7 @@ def demonstrate_basic_usage(workspace: Path):
     binary_data = b"Binary data sample" * 100
     binary_id = maif.add_binary_block(
         binary_data,
-        "data",
-        {"type": "test_data", "timestamp": time.time()}
+        metadata={"type": "test_data", "timestamp": time.time()}
     )
     print(f"  Added binary block with ID: {binary_id}")
     

@@ -363,28 +363,27 @@ class EnhancedMAIF:
             
             return block_id
     
-    def add_binary_block(self, data: bytes, block_type: str, 
+    def add_binary_block(self, data: bytes, 
                         metadata: Optional[Dict] = None) -> str:
         """
         Add a binary block to the MAIF.
         
         Args:
             data: Binary data
-            block_type: Block type
             metadata: Block metadata
             
         Returns:
             Block ID
         """
         with self._lock:
-            # Add to core MAIF
-            block_id = self.encoder.add_binary_block(data, block_type, metadata)
+            # Add to core MAIF (block_type defaults to BINARY)
+            block_id = self.encoder.add_binary_block(data, metadata=metadata)
             
             # Record event if event sourcing enabled
             if hasattr(self, 'event_sourced_maif'):
                 self.event_sourced_maif.add_block(
                     block_id=block_id,
-                    block_type=block_type,
+                    block_type="binary",
                     data=data,
                     metadata=metadata
                 )

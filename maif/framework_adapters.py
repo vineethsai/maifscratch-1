@@ -16,6 +16,27 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Block type constants (match SecureBlockType values)
+BLOCK_TYPE_TEXT = 0x54455854       # 'TEXT'
+BLOCK_TYPE_EMBEDDINGS = 0x454D4244 # 'EMBD'
+BLOCK_TYPE_BINARY = 0x42494E41     # 'BINA'
+
+def _get_block_type(block) -> int:
+    """Get block type as int from a SecureBlock."""
+    if hasattr(block, 'header'):
+        return block.header.block_type
+    return getattr(block, 'block_type', 0)
+
+def _is_text_block(block) -> bool:
+    """Check if block is a text block."""
+    block_type = _get_block_type(block)
+    return block_type == BLOCK_TYPE_TEXT or block_type == 1
+
+def _is_embeddings_block(block) -> bool:
+    """Check if block is an embeddings block."""
+    block_type = _get_block_type(block)
+    return block_type == BLOCK_TYPE_EMBEDDINGS or block_type == 2
+
 # Base classes for framework compatibility
 class BaseVectorStore(ABC):
     """Base class for vector store implementations."""
@@ -99,9 +120,10 @@ class MAIFLangChainVectorStore(BaseVectorStore):
         
         # Load text blocks as documents
         for block in self.decoder.blocks:
-            if block.block_type == "text":
-                doc_id = block.metadata.get("doc_id", block.block_id)
-                content = self.decoder.get_block_data(block.block_id).decode('utf-8')
+            if _is_text_block(block):
+                meta = block.metadata or {}
+                doc_id = meta.get("doc_id", block.header.block_id.hex())
+                content = block.data.decode('utf-8') if block.data else ""
                 
                 self._document_cache[doc_id] = Document(
                     page_content=content,
@@ -110,10 +132,11 @@ class MAIFLangChainVectorStore(BaseVectorStore):
         
         # Load embeddings
         for block in self.decoder.blocks:
-            if block.block_type == "embeddings":
-                doc_id = block.metadata.get("doc_id")
+            if _is_embeddings_block(block):
+                meta = block.metadata or {}
+                doc_id = meta.get("doc_id")
                 if doc_id:
-                    embedding_data = self.decoder.get_block_data(block.block_id)
+                    embedding_data = block.data
                     # Deserialize embedding
                     import struct
                     num_floats = len(embedding_data) // 4
@@ -298,9 +321,9 @@ class MAIFLlamaIndexVectorStore:
         
         # Load embeddings
         for block in self.decoder.blocks:
-            if block.block_type == "embeddings" and block.metadata.get("node_id"):
+            if _is_embeddings_block(block) and (block.metadata or {}).get("node_id"):
                 node_id = block.metadata["node_id"]
-                embedding_data = self.decoder.get_block_data(block.block_id)
+                embedding_data = block.data
                 
                 import struct
                 num_floats = len(embedding_data) // 4
@@ -447,10 +470,11 @@ class MAIFMemGPTBackend:
         # Load from MAIF if exists
         if self.decoder:
             for block in self.decoder.blocks:
-                if (block.block_type == "memory_page" and 
-                    block.metadata.get("page_id") == page_id):
+                meta = block.metadata or {}
+                if (meta.get("type") == "memory_page" and 
+                    meta.get("page_id") == page_id):
                     page_data = json.loads(
-                        self.decoder.get_block_data(block.block_id).decode('utf-8')
+                        block.data.decode('utf-8') if block.data else '{}'
                     )
                     
                     # Add to memory cache

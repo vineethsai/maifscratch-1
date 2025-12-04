@@ -38,15 +38,11 @@ class SimpleMAIFAgent:
         self.embedder = OptimizedSemanticEmbedder()
         self.privacy_engine = PrivacyEngine()
         
-        # Load or create MAIF
+        # Load or create MAIF (v3 format - self-contained)
+        self.encoder = MAIFEncoder(str(self.maif_path), agent_id=agent_id)
         if self.maif_path.exists():
             self.decoder = MAIFDecoder(str(self.maif_path))
-            self.encoder = MAIFEncoder(
-                existing_maif_path=str(self.maif_path),
-                agent_id=agent_id
-            )
         else:
-            self.encoder = MAIFEncoder(agent_id=agent_id)
             self.decoder = None
         
         # Memory cache for fast access

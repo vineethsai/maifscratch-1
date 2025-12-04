@@ -849,9 +849,9 @@ class AcidMAIFEncoder:
         self.acid_level = acid_level
         self.agent_id = agent_id
         
-        # Create base encoder
+        # Create base encoder (v3 format)
         try:
-            self._encoder = MAIFEncoder(agent_id=agent_id)
+            self._encoder = MAIFEncoder(self.maif_path, agent_id=agent_id)
         except Exception as e:
             raise RuntimeError(f"Failed to create MAIFEncoder: {e}")
         

@@ -307,12 +307,16 @@ class SelfOptimizingMAIF:
                 warm_blocks.append(block)
         
         # Write blocks in optimized order: hot -> warm -> cold
+        # Block type constants
+        BLOCK_TYPE_TEXT = 0x54455854  # 'TEXT'
+        
         for block_list in [hot_blocks, warm_blocks, cold_blocks]:
             for block in block_list:
                 block_data = block.data
                 block_type = block.header.block_type
                 
-                if block_type.name == "TEXT":
+                # Check if text block (by comparing int values)
+                if block_type == BLOCK_TYPE_TEXT or block_type == 1:
                     new_encoder.add_text_block(
                         block_data.decode('utf-8'),
                         metadata=block.metadata
@@ -320,7 +324,6 @@ class SelfOptimizingMAIF:
                 else:
                     new_encoder.add_binary_block(
                         block_data,
-                        block_type,
                         metadata=block.metadata
                     )
         

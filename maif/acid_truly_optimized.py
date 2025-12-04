@@ -517,8 +517,8 @@ class TrulyOptimizedAcidMAIF:
         if not os.path.exists(blocks_path):
             Path(blocks_path).touch()
         
-        # Create base encoder
-        self._encoder = MAIFEncoder(agent_id=self.agent_id)
+        # Create base encoder (v3 format)
+        self._encoder = MAIFEncoder(self.maif_path, agent_id=self.agent_id)
         
         # Create transaction manager
         self._transaction_manager = create_truly_optimized_manager(self.maif_path, acid_level)

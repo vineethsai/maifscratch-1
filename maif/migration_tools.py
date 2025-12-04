@@ -53,7 +53,7 @@ class VectorDBMigrator:
         from .core import MAIFEncoder
         from .semantic_optimized import OptimizedSemanticEmbedder
         
-        self.encoder = MAIFEncoder(agent_id=agent_id)
+        self.encoder = MAIFEncoder(str(self.target_maif_path), agent_id=agent_id)
         self.embedder = OptimizedSemanticEmbedder()
         
         # Migration statistics

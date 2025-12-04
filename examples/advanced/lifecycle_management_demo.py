@@ -114,8 +114,7 @@ def demonstrate_splitting():
     for i in range(50):
         encoder.add_binary_block(
             b"Binary data " * 1000,
-            "image" if i % 2 == 0 else "data",
-            {"block_id": i, "type": "binary"}
+            metadata={"block_id": i, "type": "binary", "subtype": "image" if i % 2 == 0 else "data"}
         )
     
     # Finalize (self-contained with Ed25519 signatures)
