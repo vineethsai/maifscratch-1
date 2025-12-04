@@ -71,7 +71,7 @@ def run_demo(name: str, script_path: str) -> bool:
             cwd=MAIF_ROOT,
             env=env,
             capture_output=False,
-            timeout=120  # 2 minute timeout
+            timeout=300  # 5 minute timeout
         )
         
         success = result.returncode == 0

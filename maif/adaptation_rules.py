@@ -163,10 +163,12 @@ class ScheduleCondition:
         # e.g. "0 0 * * *" = daily at midnight
         
         import datetime
-        import pytz
-        
-        # Parse current time
-        dt = datetime.datetime.fromtimestamp(current_time, pytz.timezone(self.timezone))
+        try:
+            import pytz
+            dt = datetime.datetime.fromtimestamp(current_time, pytz.timezone(self.timezone))
+        except ImportError:
+            # Fall back to local time if pytz not available
+            dt = datetime.datetime.fromtimestamp(current_time)
         
         # Parse cron expression
         parts = self.cron_expression.split()

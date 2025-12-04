@@ -413,12 +413,14 @@ class MAIFAgent(ABC):
             
             # Extract state data from content
             state_data = None
-            for content in artifact.get_content_list():
-                # Try to parse as JSON state
-                if isinstance(content.get('data'), (bytes, str)):
+            for item in artifact.get_content_list():
+                # Try to parse as JSON state (content field)
+                content_str = item.get('content', '')
+                if isinstance(content_str, bytes):
+                    content_str = content_str.decode('utf-8', errors='replace')
+                if content_str:
                     try:
-                        data_str = content['data'].decode() if isinstance(content['data'], bytes) else content['data']
-                        parsed = json.loads(data_str)
+                        parsed = json.loads(content_str)
                         if 'agent_id' in parsed and 'statistics' in parsed:
                             state_data = parsed
                             break
@@ -461,13 +463,16 @@ class MAIFAgent(ABC):
         
         # Extract agent data
         state_data = None
-        for content in artifact.get_content_list():
+        for item in artifact.get_content_list():
             try:
-                data_str = content['data'].decode() if isinstance(content.get('data'), bytes) else content.get('data', '')
-                parsed = json.loads(data_str)
-                if 'agent_id' in parsed:
-                    state_data = parsed
-                    break
+                content_str = item.get('content', '')
+                if isinstance(content_str, bytes):
+                    content_str = content_str.decode('utf-8', errors='replace')
+                if content_str:
+                    parsed = json.loads(content_str)
+                    if 'agent_id' in parsed:
+                        state_data = parsed
+                        break
             except (json.JSONDecodeError, AttributeError):
                 continue
         

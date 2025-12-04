@@ -330,13 +330,23 @@ class MAIF:
         # If loaded from file, get from decoder
         if self._is_loaded and self._decoder:
             content_list = []
+            # Block type constants (match SecureBlockType values)
+            BLOCK_TYPE_TEXT = 0x54455854       # 'TEXT'
+            BLOCK_TYPE_EMBEDDINGS = 0x454D4244 # 'EMBD'
+            
             for i, block in enumerate(self._decoder.blocks):
                 block_type = block.header.block_type
-                type_name = 'text' if block_type == 1 else 'embeddings' if block_type == 2 else 'binary'
+                if block_type == BLOCK_TYPE_TEXT:
+                    type_name = 'text'
+                elif block_type == BLOCK_TYPE_EMBEDDINGS:
+                    type_name = 'embeddings'
+                else:
+                    type_name = 'binary'
+                
                 content_list.append({
                     'index': i,
                     'type': type_name,
-                    'content': block.data.decode('utf-8', errors='replace')[:100] if block.data else '',
+                    'content': block.data.decode('utf-8', errors='replace') if block.data else '',
                     'metadata': block.metadata or {}
                 })
         
