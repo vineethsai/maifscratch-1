@@ -110,24 +110,17 @@ def demonstrate_event_sourcing_features(maif: EnhancedMAIF):
     """Demonstrate event sourcing features."""
     print("\n=== Event Sourcing Features ===")
     
-    # Update existing blocks
-    print("\nUpdating blocks to demonstrate event tracking...")
+    # Show event history (already captured during basic usage)
+    print("\nReviewing events captured during file creation...")
     
-    # Get history before updates
-    history_before = len(maif.get_history())
+    # Get history
+    history = maif.get_history()
     
-    # Update a block
-    maif.add_text_block(
-        "This is an updated block with new content.",
-        {"block_id": "block_0", "timestamp": time.time(), "updated": True}
-    )
+    print(f"Total events recorded: {len(history)}")
     
-    # Get history after updates
-    history_after = len(maif.get_history())
-    
-    print(f"Events before update: {history_before}")
-    print(f"Events after update: {history_after}")
-    print(f"New events: {history_after - history_before}")
+    # Note: In the secure format, files are immutable after finalization.
+    # This demonstrates the event sourcing for the blocks that were added
+    # before finalization. New blocks would require creating a new MAIF file.
     
     # Show latest events
     print("\nLatest events:")
@@ -265,8 +258,20 @@ def demonstrate_version_management_features(workspace: Path):
     
     print(f"Schema updated to version {registry.get_latest_version()}")
     
-    # Add content with new schema
-    print("\nAdding content with new schema (v1.1.0)...")
+    # Note: In the secure format, MAIF files are immutable after finalization.
+    # To add content with a new schema, create a new MAIF file.
+    print("\nCreating new MAIF with updated schema (v1.1.0)...")
+    
+    maif_path_v2 = workspace / "versioned_demo_v1.1.maif"
+    maif_v2 = EnhancedMAIF(
+        str(maif_path_v2),
+        agent_id="version-agent-v1.1",
+        enable_event_sourcing=False,
+        enable_columnar_storage=False,
+        enable_version_management=True,
+        enable_adaptation_rules=False
+    )
+    
     for i in range(5, 10):
         text = f"Content for version 1.1.0 - item {i}"
         metadata = {
@@ -277,11 +282,14 @@ def demonstrate_version_management_features(workspace: Path):
             "tags": [f"tag_{j}" for j in range(i % 3 + 1)],
             "rating": i / 2.0
         }
-        maif.add_text_block(text, metadata)
+        maif_v2.add_text_block(text, metadata)
     
-    # Save MAIF
-    maif.save()
-    print(f"\nVersioned MAIF saved to {maif_path}")
+    # Save the new MAIF
+    maif_v2.save()
+    print(f"  New versioned MAIF saved to {maif_path_v2}")
+    
+    # Original MAIF info
+    print(f"\nOriginal versioned MAIF: {maif_path}")
     
     return maif
 
