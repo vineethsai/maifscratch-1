@@ -257,6 +257,14 @@ class TestComplianceLogger:
         assert logger.verify_log_integrity() is False
 
 
+try:
+    import boto3
+    HAS_BOTO3 = True
+except ImportError:
+    HAS_BOTO3 = False
+
+
+@pytest.mark.skipif(not HAS_BOTO3, reason="boto3 not installed")
 class TestSIEMIntegration:
     """Test SIEM integration functionality."""
 
