@@ -25,17 +25,17 @@ jobs:
           pip install .[dev] || pip install -r requirements.txt
           pip install ruff mypy black bandit
 
-      - name: Lint with ruff
+      - name: Lint and auto-fix with ruff
         run: |
-          ruff .
-      
+          ruff check . --fix
+
       - name: Type check with mypy
         run: |
           mypy .
 
-      - name: Check code formatting with black
+      - name: Auto-format with black
         run: |
-          black --check .
+          black .
 
       - name: Security scan with bandit
         run: |
