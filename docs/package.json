@@ -63,7 +63,7 @@
     "markdown-it-table-of-contents": "^0.6.0",
     "medium-zoom": "^1.1.0",
     "mermaid": "^10.6.1",
-    "netlify-cli": "^17.10.1",
+    "netlify-cli": "^23.12.3",
     "playwright": "^1.40.1",
     "prettier": "^3.1.1",
     "sitemap": "^7.1.1",
