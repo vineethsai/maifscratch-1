@@ -6,6 +6,8 @@
 <h3 align="center">Multimodal Artifact File Format for Trustworthy AI Agents</h3>
 
 <p align="center">
+  <a href="https://pypi.org/project/maif/"><img src="https://img.shields.io/pypi/v/maif.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/maif/"><img src="https://img.shields.io/pypi/dm/maif.svg" alt="Downloads"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
   <a href="https://github.com/vineethsai/maif/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/vineethsai/maif/ci.yml?branch=main&label=tests" alt="CI Tests"></a>
