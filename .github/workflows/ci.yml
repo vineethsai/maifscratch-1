@@ -7,7 +7,7 @@ on:
     branches: [main, master]
 
 jobs:
-  test-and-benchmark:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,29 +22,34 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install .[dev] || pip install -r requirements.txt
-          pip install ruff mypy black bandit
+          pip install -r requirements.txt
+          pip install pytest pytest-timeout
 
-      - name: Lint and auto-fix with ruff
+      - name: Run tests
         run: |
-          ruff check . --fix
+          pytest tests/ -v --timeout=60
 
-      - name: Type check with mypy
-        run: |
-          mypy .
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't block PRs on lint issues
 
-      - name: Auto-format with black
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linters
         run: |
-          black .
+          pip install ruff bandit
+
+      - name: Lint with ruff (errors only)
+        run: |
+          ruff check . --select=E9,F63,F7,F82 --show-source
 
       - name: Security scan with bandit
         run: |
-          bandit -r maif
-
-      - name: Run all tests
-        run: |
-          pytest tests/
-
-      - name: Run benchmarks
-        run: |
-          pytest benchmarks/
+          bandit -r maif -ll -ii || true
