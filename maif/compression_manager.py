@@ -10,6 +10,7 @@ making it easier to use compression functionality throughout the codebase.
 from typing import Dict, List, Optional, Any, Union, Tuple
 import os
 import json
+import logging
 from enum import Enum
 from dataclasses import dataclass
 
@@ -22,6 +23,9 @@ from .compression import (
     LZ4_AVAILABLE,
     BROTLI_AVAILABLE,
 )
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 
 class CompressionManager:
@@ -227,7 +231,7 @@ class CompressionManager:
         # Snappy is not directly supported in the CompressionAlgorithm enum
         # We'll need to add support for it or use a fallback
         try:
-            import snappy
+            import snappy  # type: ignore[import-not-found]
 
             return snappy.compress(data)
         except ImportError:
@@ -248,7 +252,7 @@ class CompressionManager:
             Decompressed bytes
         """
         try:
-            import snappy
+            import snappy  # type: ignore[import-not-found]
 
             return snappy.decompress(data)
         except ImportError:
@@ -258,7 +262,7 @@ class CompressionManager:
                     return self.decompress(data, CompressionAlgorithm.LZ4)
                 else:
                     return self.decompress(data, CompressionAlgorithm.ZLIB)
-            except (CompressionError, ValueError, Exception) as e:
+            except (ValueError, Exception) as e:
                 # Last resort: return data as-is
                 logger.debug(f"All decompression attempts failed: {e}")
                 return data

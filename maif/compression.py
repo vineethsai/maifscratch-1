@@ -8,7 +8,7 @@ import bz2
 import lzma
 import struct
 import json
-import numpy as np
+import numpy as np  # type: ignore[import-not-found]
 from typing import Dict, List, Tuple, Optional, Any, Union
 from enum import Enum
 from dataclasses import dataclass
@@ -16,21 +16,21 @@ import hashlib
 import time
 
 try:
-    import brotli
+    import brotli  # type: ignore[import-not-found]
 
     BROTLI_AVAILABLE = True
 except ImportError:
     BROTLI_AVAILABLE = False
 
 try:
-    import lz4.frame
+    import lz4.frame  # type: ignore[import-not-found]
 
     LZ4_AVAILABLE = True
 except ImportError:
     LZ4_AVAILABLE = False
 
 try:
-    import zstandard as zstd
+    import zstandard as zstd  # type: ignore[import-not-found]
 
     ZSTD_AVAILABLE = True
 except ImportError:
@@ -689,7 +689,7 @@ class MAIFCompressor:
     ) -> np.ndarray:
         """Reduce embedding dimensions while preserving semantic structure."""
         try:
-            from sklearn.decomposition import PCA
+            from sklearn.decomposition import PCA  # type: ignore[import-not-found]
 
             # Reshape for PCA if needed
             if len(embeddings.shape) == 1:
