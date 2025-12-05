@@ -10,4 +10,3 @@ A multi-agent RAG system that uses:
 """
 
 __version__ = "1.0.0"
-

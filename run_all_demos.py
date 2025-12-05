@@ -50,13 +50,14 @@ DEMOS = [
 # Track results
 results = []
 
+
 def run_demo(name: str, script_path: str) -> bool:
     """Run a single demo and return success status."""
     print(f"\n{'=' * 70}")
     print(f"Running: {name}")
     print(f"Script: {script_path}")
     print("-" * 70)
-    
+
     try:
         # Set up environment with PYTHONPATH pointing to maif root
         env = os.environ.copy()
@@ -64,20 +65,20 @@ def run_demo(name: str, script_path: str) -> bool:
         if "PYTHONPATH" in env:
             pythonpath = f"{pythonpath}:{env['PYTHONPATH']}"
         env["PYTHONPATH"] = pythonpath
-        
+
         # Run the script
         result = subprocess.run(
             [sys.executable, script_path],
             cwd=MAIF_ROOT,
             env=env,
             capture_output=False,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
         )
-        
+
         success = result.returncode == 0
         print(f"\n{'✅ PASSED' if success else '❌ FAILED'}: {name}")
         return success
-        
+
     except subprocess.TimeoutExpired:
         print(f"\n⏱️ TIMEOUT: {name}")
         return False
@@ -85,14 +86,15 @@ def run_demo(name: str, script_path: str) -> bool:
         print(f"\n❌ ERROR: {name} - {e}")
         return False
 
+
 def collect_maif_files():
     """Collect all .maif files from the root and move to output folder."""
     print(f"\n{'=' * 70}")
     print("Collecting .maif files...")
     print("-" * 70)
-    
+
     collected = 0
-    
+
     # Check current directory and subdirectories
     search_paths = [
         MAIF_ROOT,
@@ -101,11 +103,11 @@ def collect_maif_files():
         MAIF_ROOT / "examples" / "advanced",
         MAIF_ROOT / "demo_workspace",
     ]
-    
+
     for search_path in search_paths:
         if not search_path.exists():
             continue
-            
+
         for maif_file in search_path.glob("*.maif"):
             dest = OUTPUT_DIR / maif_file.name
             # Handle duplicate names
@@ -116,51 +118,52 @@ def collect_maif_files():
                 while dest.exists():
                     dest = OUTPUT_DIR / f"{base}_{i}{ext}"
                     i += 1
-            
+
             shutil.move(str(maif_file), str(dest))
             print(f"  Moved: {maif_file.name} -> {dest.name}")
             collected += 1
-        
+
         # Note: We no longer need manifest files - the new format is self-contained!
-    
+
     print(f"\nCollected {collected} files to {OUTPUT_DIR}")
     return collected
 
+
 def main():
     """Run all demos."""
-    
+
     # Run each demo
     for name, script in DEMOS:
         success = run_demo(name, script)
         results.append((name, success))
-    
+
     # Collect output files
     collect_maif_files()
-    
+
     # Print summary
     print(f"\n{'=' * 70}")
     print("SUMMARY")
     print("=" * 70)
-    
+
     passed = sum(1 for _, s in results if s)
     total = len(results)
-    
+
     for name, success in results:
         status = "✅ PASSED" if success else "❌ FAILED"
         print(f"  {status}: {name}")
-    
+
     print(f"\n{passed}/{total} demos passed")
-    
+
     # List output files
     print(f"\nOutput files in {OUTPUT_DIR}:")
     for f in sorted(OUTPUT_DIR.iterdir()):
         size = f.stat().st_size
         print(f"  {f.name} ({size:,} bytes)")
-    
+
     print(f"\nTo clean up: rm -rf {OUTPUT_DIR}")
-    
+
     return 0 if passed == total else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())
-

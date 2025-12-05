@@ -13,12 +13,12 @@ Version 3.0 - Secure Format
 
 Quick Start:
     from maif import MAIFEncoder, MAIFDecoder
-    
+
     # Create a MAIF file
     encoder = MAIFEncoder("output.maif", agent_id="my-agent")
     encoder.add_text_block("Hello, world!")
     encoder.finalize()
-    
+
     # Read and verify a MAIF file
     decoder = MAIFDecoder("output.maif")
     is_valid, errors = decoder.verify_integrity()
@@ -36,12 +36,10 @@ from .core import (
     MAIFDecoder,
     MAIFParser,
     BlockType,
-    
     # Data classes
     MAIFBlock,
     MAIFVersion,
     MAIFHeader,
-    
     # Secure format structures
     SecureBlock,
     SecureBlockHeader,
@@ -50,14 +48,12 @@ from .core import (
     FileFooter,
     BlockFlags,
     FileFlags,
-    
     # Convenience functions
     create_maif,
     verify_maif,
     quick_create,
     quick_verify,
     quick_read,
-    
     # Constants
     MAGIC_HEADER,
     MAGIC_FOOTER,
@@ -86,9 +82,14 @@ except ImportError:
 
 try:
     from .privacy import (
-        PrivacyEngine, PrivacyPolicy, PrivacyLevel, 
-        EncryptionMode, AccessRule, DifferentialPrivacy,
-        SecureMultipartyComputation, ZeroKnowledgeProof
+        PrivacyEngine,
+        PrivacyPolicy,
+        PrivacyLevel,
+        EncryptionMode,
+        AccessRule,
+        DifferentialPrivacy,
+        SecureMultipartyComputation,
+        ZeroKnowledgeProof,
     )
 except ImportError:
     PrivacyEngine = None
@@ -99,10 +100,14 @@ except ImportError:
 
 try:
     from .semantic import (
-        SemanticEmbedder, SemanticEmbedding, KnowledgeTriple,
-        CrossModalAttention, HierarchicalSemanticCompression,
-        CryptographicSemanticBinding, DeepSemanticUnderstanding,
-        KnowledgeGraphBuilder
+        SemanticEmbedder,
+        SemanticEmbedding,
+        KnowledgeTriple,
+        CrossModalAttention,
+        HierarchicalSemanticCompression,
+        CryptographicSemanticBinding,
+        DeepSemanticUnderstanding,
+        KnowledgeGraphBuilder,
     )
 except ImportError:
     SemanticEmbedder = None
@@ -113,8 +118,9 @@ try:
         AdaptiveCrossModalAttention,
         HierarchicalSemanticCompression as EnhancedHierarchicalSemanticCompression,
         CryptographicSemanticBinding as EnhancedCryptographicSemanticBinding,
-        AttentionWeights
+        AttentionWeights,
     )
+
     ENHANCED_ALGORITHMS_AVAILABLE = True
 except ImportError:
     ENHANCED_ALGORITHMS_AVAILABLE = False
@@ -167,7 +173,12 @@ except ImportError:
 # =============================================================================
 
 try:
-    from .agentic_framework import MAIFAgent, PerceptionSystem, ReasoningSystem, ExecutionSystem
+    from .agentic_framework import (
+        MAIFAgent,
+        PerceptionSystem,
+        ReasoningSystem,
+        ExecutionSystem,
+    )
 except ImportError:
     MAIFAgent = None
 
@@ -181,22 +192,44 @@ except ImportError:
     HealthChecker = None
 
 try:
-    from .rate_limiter import RateLimiter, RateLimitConfig, CostBasedRateLimiter, rate_limit
+    from .rate_limiter import (
+        RateLimiter,
+        RateLimitConfig,
+        CostBasedRateLimiter,
+        rate_limit,
+    )
 except ImportError:
     RateLimiter = None
 
 try:
-    from .metrics_aggregator import MetricsAggregator, MAIFMetrics, initialize_metrics, get_metrics
+    from .metrics_aggregator import (
+        MetricsAggregator,
+        MAIFMetrics,
+        initialize_metrics,
+        get_metrics,
+    )
 except ImportError:
     MetricsAggregator = None
 
 try:
-    from .cost_tracker import CostTracker, Budget, BudgetExceededException, initialize_cost_tracking, get_cost_tracker, with_cost_tracking
+    from .cost_tracker import (
+        CostTracker,
+        Budget,
+        BudgetExceededException,
+        initialize_cost_tracking,
+        get_cost_tracker,
+        with_cost_tracking,
+    )
 except ImportError:
     CostTracker = None
 
 try:
-    from .batch_processor import BatchProcessor, StreamBatchProcessor, DistributedBatchProcessor, batch_process
+    from .batch_processor import (
+        BatchProcessor,
+        StreamBatchProcessor,
+        DistributedBatchProcessor,
+        batch_process,
+    )
 except ImportError:
     BatchProcessor = None
 
@@ -218,7 +251,13 @@ try:
     from .aws_lambda_integration import AWSLambdaIntegration
     from .aws_stepfunctions_integration import AWSStepFunctionsIntegration
     from .aws_xray_integration import MAIFXRayIntegration, xray_trace, xray_subsegment
-    from .aws_deployment import DeploymentManager, CloudFormationGenerator, LambdaPackager, DockerfileGenerator
+    from .aws_deployment import (
+        DeploymentManager,
+        CloudFormationGenerator,
+        LambdaPackager,
+        DockerfileGenerator,
+    )
+
     AWS_IMPORTS_AVAILABLE = True
 except ImportError:
     pass
@@ -229,18 +268,21 @@ except ImportError:
 
 try:
     from .convenience_api import SimpleMAIFAgent, create_agent
+
     CONVENIENCE_API_AVAILABLE = True
 except ImportError:
     CONVENIENCE_API_AVAILABLE = False
 
 try:
     from .migration_tools import VectorDBMigrator, migrate_to_maif
+
     MIGRATION_TOOLS_AVAILABLE = True
 except ImportError:
     MIGRATION_TOOLS_AVAILABLE = False
 
 try:
     from .debug_tools import MAIFDebugger, debug_maif
+
     DEBUG_TOOLS_AVAILABLE = True
 except ImportError:
     DEBUG_TOOLS_AVAILABLE = False
@@ -255,78 +297,66 @@ __license__ = "MIT"
 
 __all__ = [
     # Core API
-    'MAIFEncoder',
-    'MAIFDecoder',
-    'MAIFParser',
-    'BlockType',
-    'MAIFBlock',
-    'MAIFVersion',
-    'MAIFHeader',
-    
+    "MAIFEncoder",
+    "MAIFDecoder",
+    "MAIFParser",
+    "BlockType",
+    "MAIFBlock",
+    "MAIFVersion",
+    "MAIFHeader",
     # Secure format
-    'SecureBlock',
-    'SecureBlockHeader',
-    'SecureFileHeader',
-    'ProvenanceEntry',
-    'FileFooter',
-    'BlockFlags',
-    'FileFlags',
-    
+    "SecureBlock",
+    "SecureBlockHeader",
+    "SecureFileHeader",
+    "ProvenanceEntry",
+    "FileFooter",
+    "BlockFlags",
+    "FileFlags",
     # Legacy aliases
-    'SecureMAIFWriter',
-    'SecureMAIFReader',
-    'SecureBlockType',
-    
+    "SecureMAIFWriter",
+    "SecureMAIFReader",
+    "SecureBlockType",
     # Convenience functions
-    'create_maif',
-    'verify_maif',
-    'quick_create',
-    'quick_verify',
-    'quick_read',
-    
+    "create_maif",
+    "verify_maif",
+    "quick_create",
+    "quick_verify",
+    "quick_read",
     # Security
-    'MAIFSigner',
-    'MAIFVerifier',
-    
+    "MAIFSigner",
+    "MAIFVerifier",
     # Privacy
-    'PrivacyEngine',
-    'PrivacyPolicy',
-    'PrivacyLevel',
-    'EncryptionMode',
-    'AccessRule',
-    
+    "PrivacyEngine",
+    "PrivacyPolicy",
+    "PrivacyLevel",
+    "EncryptionMode",
+    "AccessRule",
     # Semantics
-    'SemanticEmbedder',
-    'SemanticEmbedding',
-    'KnowledgeTriple',
-    'KnowledgeGraphBuilder',
-    
+    "SemanticEmbedder",
+    "SemanticEmbedding",
+    "KnowledgeTriple",
+    "KnowledgeGraphBuilder",
     # Forensics & Validation
-    'ForensicAnalyzer',
-    'MAIFValidator',
-    
+    "ForensicAnalyzer",
+    "MAIFValidator",
     # Streaming
-    'MAIFStreamReader',
-    'MAIFStreamWriter',
-    
+    "MAIFStreamReader",
+    "MAIFStreamWriter",
     # Agent
-    'MAIFAgent',
-    
+    "MAIFAgent",
     # Production
-    'HealthChecker',
-    'RateLimiter',
-    'MetricsAggregator',
-    'CostTracker',
-    'BatchProcessor',
-    
+    "HealthChecker",
+    "RateLimiter",
+    "MetricsAggregator",
+    "CostTracker",
+    "BatchProcessor",
     # Constants
-    'MAGIC_HEADER',
-    'MAGIC_FOOTER',
-    'FORMAT_VERSION_MAJOR',
-    'FORMAT_VERSION_MINOR',
-    
+    "MAGIC_HEADER",
+    "MAGIC_FOOTER",
+    "FORMAT_VERSION_MAJOR",
+    "FORMAT_VERSION_MINOR",
     # Feature flags
-    'ENHANCED_ALGORITHMS_AVAILABLE',
-    'AWS_IMPORTS_AVAILABLE',
-    'CONVENIENCE_API_AVAILABLE',
+    "ENHANCED_ALGORITHMS_AVAILABLE",
+    "AWS_IMPORTS_AVAILABLE",
+    "CONVENIENCE_API_AVAILABLE",
 ]

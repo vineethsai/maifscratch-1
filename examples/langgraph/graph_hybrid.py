@@ -24,7 +24,7 @@ from examples.langgraph.nodes.cite import citation_node
 def build_hybrid_graph() -> StateGraph:
     """
     Build HYBRID LangGraph with local KB + web search.
-    
+
     Flow:
         START
           ↓
@@ -38,58 +38,56 @@ def build_hybrid_graph() -> StateGraph:
           ↓
           ├─ verified? → cite → END
           └─ needs_revision? → synthesize
-    
+
     Returns:
         StateGraph
     """
     graph = StateGraph(RAGState)
-    
+
     # Add nodes
     graph.add_node("init_session", init_session_node)
     graph.add_node("retrieve", retrieve_node_hybrid)  # Hybrid retrieval!
     graph.add_node("synthesize", synthesize_node)
     graph.add_node("fact_check", fact_check_node_enhanced)
     graph.add_node("cite", citation_node)
-    
+
     # Add edges
     graph.add_edge(START, "init_session")
     graph.add_edge("init_session", "retrieve")
     graph.add_edge("retrieve", "synthesize")
     graph.add_edge("synthesize", "fact_check")
-    
+
     # Conditional routing
     def route_after_fact_check(state: RAGState) -> str:
-        verification_status = state.get('verification_status', 'unknown')
-        needs_revision = state.get('needs_revision', False)
-        
-        if needs_revision and verification_status == 'needs_revision':
+        verification_status = state.get("verification_status", "unknown")
+        needs_revision = state.get("needs_revision", False)
+
+        if needs_revision and verification_status == "needs_revision":
             return "synthesize"
         else:
             return "cite"
-    
+
     graph.add_conditional_edges(
         "fact_check",
         route_after_fact_check,
-        {
-            "synthesize": "synthesize",
-            "cite": "cite"
-        }
+        {"synthesize": "synthesize", "cite": "cite"},
     )
-    
+
     graph.add_edge("cite", END)
-    
+
     return graph
 
 
-def create_hybrid_app(checkpoints_db: str = "examples/langgraph/data/checkpoints_hybrid.db"):
+def create_hybrid_app(
+    checkpoints_db: str = "examples/langgraph/data/checkpoints_hybrid.db",
+):
     """Create hybrid app with local KB + web search."""
     Path(checkpoints_db).parent.mkdir(parents=True, exist_ok=True)
-    
+
     conn = sqlite3.connect(checkpoints_db, check_same_thread=False)
     checkpointer = SqliteSaver(conn)
-    
+
     graph = build_hybrid_graph()
     app = graph.compile(checkpointer=checkpointer)
-    
-    return app
 
+    return app
