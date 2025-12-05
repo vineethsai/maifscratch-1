@@ -97,3 +97,13 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json.bak
 
+# Generated demo/test artifacts
+agent_workspace/
+demo_output/
+demo_workspace/
+demo_agent
+benchmark_results/
+
+# But keep example files for reference
+!examples/*/sample_*
+

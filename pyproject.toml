@@ -116,11 +116,11 @@ maif-extract = "maif.cli:extract_content"
 maif-deploy = "maif.aws_deployment:deploy_cli"
 
 [project.urls]
-Homepage = "https://github.com/maif-ai/maif"
-Documentation = "https://maif.readthedocs.io/"
-Repository = "https://github.com/maif-ai/maif"
-"Bug Reports" = "https://github.com/maif-ai/maif/issues"
-Changelog = "https://github.com/maif-ai/maif/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/vineethsai/maif"
+Documentation = "https://vineethsai.github.io/maif/"
+Repository = "https://github.com/vineethsai/maif"
+"Bug Reports" = "https://github.com/vineethsai/maif/issues"
+Changelog = "https://github.com/vineethsai/maif/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["maif"]

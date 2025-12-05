@@ -8,8 +8,10 @@
 <p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
-  <a href="https://github.com/vineethsai/maif/actions"><img src="https://img.shields.io/badge/tests-431%20passed-brightgreen.svg" alt="Tests"></a>
+  <a href="https://github.com/vineethsai/maif/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/vineethsai/maif/ci.yml?branch=main&label=tests" alt="CI Tests"></a>
   <a href="https://vineethsai.github.io/maif/"><img src="https://img.shields.io/badge/docs-online-blue.svg" alt="Documentation"></a>
+  <a href="https://github.com/vineethsai/maif/releases"><img src="https://img.shields.io/github/v/release/vineethsai/maif" alt="Release"></a>
+  <a href="https://github.com/vineethsai/maif/blob/main/CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg" alt="Code of Conduct"></a>
 </p>
 
 <p align="center">
@@ -300,6 +302,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
+
+---
+
+## Community & Support
+
+- 💬 **[GitHub Discussions](https://github.com/vineethsai/maif/discussions)** - Ask questions, share ideas
+- 🐛 **[Issue Tracker](https://github.com/vineethsai/maif/issues)** - Report bugs or request features  
+- 📖 **[Documentation](https://vineethsai.github.io/maif/)** - Complete guides and API reference
+- 🔒 **[Security](SECURITY.md)** - Report security vulnerabilities
+- 📋 **[Changelog](CHANGELOG.md)** - See what's new
+- 📜 **[Specification](SPECIFICATION.md)** - MAIF file format specification
 
 ---
 
