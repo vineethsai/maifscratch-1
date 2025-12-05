@@ -9,6 +9,7 @@ Uses thread-safe token bucket algorithm for non-async contexts.
 import time
 import threading
 import functools
+import asyncio
 from typing import Dict, Optional, Callable, Any
 from dataclasses import dataclass, field
 from collections import defaultdict

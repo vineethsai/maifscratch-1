@@ -7,6 +7,7 @@ Comprehensive error handling with categorization, retry logic, and reporting.
 
 import sys
 import traceback
+import logging
 from typing import Optional, Dict, Any, Callable, Type, Union, List
 from functools import wraps
 import time

@@ -349,17 +349,6 @@ class EnhancedStreamAccessController(StreamAccessController):
             "MFA challenge generation must be implemented with a real provider."
         )
 
-        self._log_audit(
-            "mfa_challenge_initiated",
-            {
-                "session_id": session_id,
-                "user_id": session.user_id,
-                "challenge_time": session.mfa_challenge_time,
-            },
-        )
-
-        return challenge
-
     def verify_mfa_response(
         self, session_id: str, response: str, expected_response: str
     ) -> bool:

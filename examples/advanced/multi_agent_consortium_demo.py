@@ -30,9 +30,12 @@ import os
 import json
 import time
 import argparse
+import logging
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Import OpenAI for real AI agent responses
 try:

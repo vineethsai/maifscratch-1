@@ -418,9 +418,10 @@ class HardwareOptimizedIO:
             return None
 
     @staticmethod
-    @numba.cuda.jit if numba else lambda: None
     def _gpu_compress_kernel(data, output):
         """GPU kernel for compression preprocessing."""
+        if numba is None:
+            return
         idx = numba.cuda.grid(1)
         if idx < data.size:
             # Simple delta encoding

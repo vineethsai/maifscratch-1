@@ -17,6 +17,7 @@ import uuid
 import struct
 import hashlib
 import json
+import logging
 from typing import Dict, List, Optional, Any, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,6 +25,8 @@ from pathlib import Path
 import mmap
 from collections import defaultdict
 from .block_storage import BlockStorage
+
+logger = logging.getLogger(__name__)
 
 
 class ACIDLevel(Enum):

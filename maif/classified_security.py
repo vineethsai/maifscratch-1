@@ -645,8 +645,8 @@ class HardwareMFAAuthenticator:
                 # Would verify signature over authenticatorData + clientDataHash
                 return True
 
-        except x509.ExtensionNotFound:
-            pass  # Key usage extension not present
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass  # Invalid assertion data
 
         return False
 

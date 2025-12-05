@@ -27,6 +27,46 @@ from .security import SecurityManager
 from .compression_manager import CompressionManager
 
 
+# Type aliases for forward references
+class SemanticProcessor:
+    """Placeholder semantic processor for multi-agent coordination."""
+    
+    def __init__(self):
+        self.embedder = SemanticEmbedder()
+    
+    def process(self, data: Any) -> Any:
+        return data
+
+
+class Ontology:
+    """Placeholder ontology class for semantic alignment."""
+    
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        self.concepts: Dict[str, Any] = {}
+
+
+class MAIF:
+    """Placeholder MAIF class for multi-agent exchange."""
+    
+    def __init__(self, id: str):
+        self.id = id
+        self.header: Dict[str, Any] = {}
+        self.blocks: List[Any] = []
+    
+    def add_block(self, block: Any):
+        self.blocks.append(block)
+
+
+class Block:
+    """Placeholder Block class for multi-agent exchange."""
+    
+    def __init__(self, block_type: BlockType, data: bytes, metadata: Optional[Dict] = None):
+        self.block_type = block_type
+        self.data = data
+        self.metadata = metadata or {}
+
+
 class ExchangeProtocolVersion(Enum):
     """MAIF Exchange Protocol versions"""
 

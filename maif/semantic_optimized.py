@@ -8,12 +8,23 @@ import hashlib
 import json
 import time
 import secrets
+import heapq
+import pickle
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from collections import Counter
 from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 import struct
+
+
+@dataclass
+class HuffmanNode:
+    """Node in a Huffman tree for compression."""
+    value: Optional[int]
+    freq: int
+    left: Optional["HuffmanNode"] = None
+    right: Optional["HuffmanNode"] = None
 
 # Import the base semantic classes
 from .semantic import SemanticEmbedder, SemanticEmbedding, AttentionWeights

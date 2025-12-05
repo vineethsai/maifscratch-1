@@ -11,11 +11,31 @@ from typing import List, Dict, Any, Optional, Callable, TypeVar, Generic
 from dataclasses import dataclass, field
 from collections import defaultdict
 import logging
-import boto3
-from botocore.exceptions import ClientError
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import uuid
+
+# Try to import AWS dependencies
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    AWS_CONFIG_AVAILABLE = True
+except ImportError:
+    boto3 = None
+    ClientError = Exception
+    AWS_CONFIG_AVAILABLE = False
+
+
+def get_aws_config():
+    """Get AWS configuration. Returns None if AWS is not available."""
+    if not AWS_CONFIG_AVAILABLE:
+        return None
+    
+    class AWSConfig:
+        def get_client(self, service_name):
+            return boto3.client(service_name)
+    
+    return AWSConfig()
 
 logger = logging.getLogger(__name__)
 

@@ -11,8 +11,27 @@ from typing import Dict, List, Optional, Callable, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
-import boto3
 from datetime import datetime, timedelta
+
+# Try to import AWS dependencies
+try:
+    import boto3
+    AWS_CONFIG_AVAILABLE = True
+except ImportError:
+    boto3 = None
+    AWS_CONFIG_AVAILABLE = False
+
+
+def get_aws_config():
+    """Get AWS configuration. Returns None if AWS is not available."""
+    if not AWS_CONFIG_AVAILABLE:
+        return None
+    
+    class AWSConfig:
+        def get_client(self, service_name):
+            return boto3.client(service_name)
+    
+    return AWSConfig()
 
 logger = logging.getLogger(__name__)
 
