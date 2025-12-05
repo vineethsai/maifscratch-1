@@ -11,7 +11,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 # Read requirements
 with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+    requirements = [
+        line.strip() for line in fh if line.strip() and not line.startswith("#")
+    ]
+
 
 # Get version from __init__.py
 def get_version():
@@ -21,6 +24,7 @@ def get_version():
             if line.startswith("__version__"):
                 return line.split("=")[1].strip().strip('"').strip("'")
     return "2.0.0"
+
 
 setup(
     name="maif",
@@ -95,7 +99,12 @@ setup(
         "async": ["aiofiles>=0.8.0"],
         "cli": ["click>=8.0.0", "tqdm>=4.64.0"],
         "validation": ["jsonschema>=4.0.0"],
-        "performance": ["xxhash>=3.0.0", "msgpack>=1.0.4", "psutil>=5.8.0", "numba>=0.56.0"],
+        "performance": [
+            "xxhash>=3.0.0",
+            "msgpack>=1.0.4",
+            "psutil>=5.8.0",
+            "numba>=0.56.0",
+        ],
         "ml": ["sentence-transformers>=2.2.0", "faiss-cpu>=1.7.0", "scipy>=1.7.0"],
         "vision": ["opencv-python>=4.5.0", "pillow>=8.3.0"],
         "monitoring": ["prometheus-client>=0.16.0"],

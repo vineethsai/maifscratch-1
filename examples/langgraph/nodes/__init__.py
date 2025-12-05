@@ -15,4 +15,3 @@ __all__ = [
     "fact_check_node_enhanced",
     "citation_node",
 ]
-
