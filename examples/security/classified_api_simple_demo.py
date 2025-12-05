@@ -4,7 +4,7 @@ Simple demonstration of the MAIF Classified Security API
 Shows how easy it is to work with classified data
 """
 
-from maif.classified_api import SecureMAIF, quick_secure_storage
+from maif.security.classified_api import SecureMAIF, quick_secure_storage
 
 
 def simple_example():
