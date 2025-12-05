@@ -34,9 +34,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add parent to path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 # Import MAIF components
-from maif.integration_enhanced import EnhancedMAIF, EnhancedMAIFManager
-from maif.adaptation_rules import (
+from maif.integration import EnhancedMAIF
+EnhancedMAIFManager = None  # Not implemented as separate class
+from maif.performance.adaptation_rules import (
     AdaptationRule,
     RulePriority,
     RuleStatus,
@@ -243,7 +248,7 @@ def demonstrate_version_management_features(workspace: Path):
     registry = maif.schema_registry
 
     # Define new schema
-    from maif.version_management import Schema, SchemaField
+    from maif.utils.version_management import Schema, SchemaField
 
     new_schema = Schema(
         version="1.1.0",
@@ -266,7 +271,7 @@ def demonstrate_version_management_features(workspace: Path):
     registry.register_schema(new_schema)
 
     # Define transition
-    from maif.version_management import VersionTransition, VersionCompatibility
+    from maif.utils.version_management import VersionTransition, VersionCompatibility
 
     transition = VersionTransition(
         from_version="1.0.0",
@@ -403,6 +408,10 @@ def demonstrate_adaptation_rules_features(workspace: Path):
 def demonstrate_integrated_manager(workspace: Path):
     """Demonstrate the integrated MAIF manager."""
     print("\n=== Integrated MAIF Manager ===")
+
+    if EnhancedMAIFManager is None:
+        print("EnhancedMAIFManager not available - skipping this demo section")
+        return
 
     # Create manager
     manager = EnhancedMAIFManager(str(workspace / "managed"))

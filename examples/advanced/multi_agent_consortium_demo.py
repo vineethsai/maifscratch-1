@@ -50,16 +50,16 @@ except ImportError:
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from maif_api import MAIF, create_maif, load_maif
 from maif.core import MAIFEncoder, MAIFDecoder, MAIFVersion
 from maif.security import MAIFSigner, MAIFVerifier
 from maif.privacy import PrivacyEngine, PrivacyLevel, PrivacyPolicy, EncryptionMode
 from maif.semantic import SemanticEmbedder, KnowledgeTriple
-from maif.metadata import MAIFMetadataManager
-from maif.validation import MAIFValidator, MAIFRepairTool
-from maif.forensics import ForensicAnalyzer
+from maif.utils import MAIFMetadataManager
+from maif.utils import MAIFValidator, MAIFRepairTool
+from maif.compliance import ForensicAnalyzer
 from maif.compression import MAIFCompressor
 
 
@@ -89,7 +89,7 @@ class BaseAgent:
         self.maif = (
             shared_maif
             if shared_maif is not None
-            else create_maif(agent_id, enable_privacy=True)
+            else MAIF(agent_id)
         )
         self.contributions = []
         self.content_blocks = {}  # Track content block IDs for updates
@@ -3652,7 +3652,7 @@ def demonstrate_multi_agent_consortium(
     print("🔥 DEBUG: Using single shared MAIF file for all agents...")
 
     # Create single shared MAIF for all agents
-    shared_maif = create_maif("multi_agent_consortium", enable_privacy=True)
+    shared_maif = MAIF("multi_agent_consortium")
     print(f"Created shared MAIF: multi_agent_consortium")
 
     agents = []

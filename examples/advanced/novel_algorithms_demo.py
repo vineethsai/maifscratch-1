@@ -21,7 +21,7 @@ import numpy as np
 from pathlib import Path
 
 # Add the parent directory to the path so we can import maif
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from maif import MAIFEncoder, MAIFDecoder, MAIFParser
 from maif.semantic import (

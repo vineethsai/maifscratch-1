@@ -10,9 +10,16 @@ Demonstrates how to:
 
 import asyncio
 import os
+import sys
 from pathlib import Path
-from maif.agentic_framework import MAIFAgent, AgentState
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from maif.agents import MAIFAgent
 from maif_api import MAIF
+
+# AgentState is not a separate class, agents manage state internally
 
 
 class StatefulProcessingAgent(MAIFAgent):

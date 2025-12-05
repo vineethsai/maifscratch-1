@@ -61,10 +61,11 @@ except ImportError:
 
 # Metadata
 try:
-    from .metadata import MAIFMetadataManager, MetadataSchema
+    from .metadata import MAIFMetadataManager
 except ImportError:
     MAIFMetadataManager = None
-    MetadataSchema = None
+
+MetadataSchema = None  # Not implemented
 
 # Version management
 try:

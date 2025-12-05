@@ -7,9 +7,11 @@ Contains integration features:
 """
 
 try:
-    from .integration import MAIFIntegration
+    from .integration import MAIFConverter
 except ImportError:
-    MAIFIntegration = None
+    MAIFConverter = None
+
+MAIFIntegration = None  # Legacy alias, not implemented
 
 try:
     from .integration_enhanced import (
@@ -35,6 +37,7 @@ except ImportError:
 
 __all__ = [
     "MAIFIntegration",
+    "MAIFConverter",
     "EnhancedMAIFProcessor",
     "ConversionResult",
     "EnhancedMAIF",

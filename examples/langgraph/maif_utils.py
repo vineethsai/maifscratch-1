@@ -16,13 +16,13 @@ import sys
 import os
 
 # Add parent directory to path for MAIF imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from maif.block_storage import BlockStorage
-from maif.block_types import BlockType
+from maif.core.block_storage import BlockStorage
+from maif.core.block_types import BlockType
 from maif import MAIFEncoder, MAIFDecoder
 from maif.security import MAIFSigner
-from maif.secure_format import SecureBlockType
+from maif.core.secure_format import SecureBlockType
 
 
 class SessionManager:

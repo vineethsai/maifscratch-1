@@ -18,7 +18,7 @@ Uses the secure MAIF format with:
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import json
 import time
 from pathlib import Path
@@ -27,13 +27,13 @@ from pathlib import Path
 from maif import MAIFEncoder, MAIFDecoder
 from maif.security import MAIFSigner, MAIFVerifier
 from maif.compression import MAIFCompressor, CompressionAlgorithm
-from maif.binary_format import MAIFBinaryWriter, MAIFBinaryParser
-from maif.validation import MAIFValidator, MAIFRepairTool
+from maif.core.binary_format import MAIFBinaryWriter, MAIFBinaryParser
+from maif.utils import MAIFValidator, MAIFRepairTool
 from maif.streaming import MAIFStreamReader, MAIFStreamWriter, StreamingConfig
 from maif.integration import MAIFConverter
-from maif.integration_enhanced import EnhancedMAIFProcessor
-from maif.metadata import MAIFMetadataManager
-from maif.forensics import ForensicAnalyzer
+from maif.integration import EnhancedMAIFProcessor
+from maif.utils import MAIFMetadataManager
+from maif.compliance import ForensicAnalyzer
 
 
 def demo_compression_algorithms():
@@ -85,7 +85,7 @@ def demo_binary_format():
     writer = MAIFBinaryWriter(output_file)
 
     # Add various block types using BlockType enum
-    from maif.binary_format import BlockType
+    from maif.core.binary_format import BlockType
 
     writer.add_block(BlockType.TEXT_DATA, b"Hello, MAIF!")
     writer.add_block(BlockType.IMAGE_DATA, b"\x00\x01\x02\x03\x04")

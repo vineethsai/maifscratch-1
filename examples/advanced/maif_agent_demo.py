@@ -16,8 +16,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add parent to path
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 # Import MAIF agent framework
-from maif.agentic_framework import (
+from maif.agents.agentic_framework import (
     AutonomousMAIFAgent,
     MAIFAgentConsortium,
     MAIFAgent,

@@ -20,8 +20,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add parent to path
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 # Import MAIF components
-from maif.lifecycle_management import (
+from maif.agents.lifecycle_management import (
     MAIFMerger,
     MAIFSplitter,
     SelfGoverningMAIF,

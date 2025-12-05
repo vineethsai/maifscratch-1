@@ -24,11 +24,12 @@ except ImportError:
     EnhancedComplianceLogger = None
 
 try:
-    from .forensics import ForensicAnalyzer, ForensicEvidence, ForensicReport
+    from .forensics import ForensicAnalyzer, ForensicEvidence
 except ImportError:
     ForensicAnalyzer = None
     ForensicEvidence = None
-    ForensicReport = None
+
+ForensicReport = None  # Not implemented
 
 try:
     from .logging_config import configure_logging, get_logger

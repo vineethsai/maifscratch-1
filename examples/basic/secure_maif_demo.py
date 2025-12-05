@@ -18,11 +18,11 @@ sys.path.insert(
 import json
 import tempfile
 import shutil
-from maif.secure_format import (
-    SecureMAIFWriter,
-    SecureMAIFReader,
-    SecureBlockType,
-    verify_secure_maif,
+from maif import (
+    MAIFEncoder as SecureMAIFWriter,
+    MAIFDecoder as SecureMAIFReader,
+    BlockType as SecureBlockType,
+    verify_maif as verify_secure_maif,
 )
 
 

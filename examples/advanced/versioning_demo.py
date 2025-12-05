@@ -18,9 +18,9 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-from maif import MAIFEncoder, MAIFDecoder, SecureBlockType
+from maif import MAIFEncoder, MAIFDecoder, BlockType as SecureBlockType
 from maif.security import MAIFSigner
-from maif.forensics import ForensicAnalyzer
+from maif.compliance import ForensicAnalyzer
 
 
 def demonstrate_versioning():

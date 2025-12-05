@@ -33,13 +33,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Add parent to path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 # Import MAIF components
-from maif.lifecycle_management_enhanced import (
+from maif.agents.lifecycle_management_enhanced import (
     EnhancedSelfGoverningMAIF,
     EnhancedMAIFLifecycleManager,
     MAIFLifecycleState,
 )
-from maif.adaptation_rules import (
+from maif.performance.adaptation_rules import (
     AdaptationRule,
     RulePriority,
     RuleStatus,

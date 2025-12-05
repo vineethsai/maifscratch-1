@@ -4,6 +4,10 @@ Simple demonstration of the MAIF Classified Security API
 Shows how easy it is to work with classified data
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from maif.security.classified_api import SecureMAIF, quick_secure_storage
 
 
