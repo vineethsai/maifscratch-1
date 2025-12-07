@@ -886,6 +886,145 @@ class TestMAIFCrewAIIntegration:
         assert stats["tasks_completed"] >= 1, "Expected at least 1 task completed"
 
 
+class TestInstrumentFunction:
+    """Tests for the instrument() one-liner function."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.artifact_path = os.path.join(self.temp_dir, "instrument_test.maif")
+    
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
+    def test_instrument_import(self):
+        """Test instrument function can be imported."""
+        from maif.integrations.crewai import instrument
+        assert callable(instrument)
+    
+    def test_instrument_mock_crew(self):
+        """Test instrument() with a mock crew."""
+        from maif.integrations.crewai import instrument
+        
+        # Create a mock crew
+        class MockCrew:
+            name = "Test Crew"
+            agents = []
+            tasks = []
+            task_callback = None
+            step_callback = None
+            
+            def kickoff(self, *args, **kwargs):
+                # Simulate callbacks being called
+                if self.step_callback:
+                    self.step_callback(MockStepOutput())
+                if self.task_callback:
+                    self.task_callback(MockTaskOutput())
+                return "result"
+        
+        crew = MockCrew()
+        crew = instrument(crew, self.artifact_path)
+        
+        # Verify callbacks were set
+        assert crew.task_callback is not None
+        assert crew.step_callback is not None
+        
+        # Run kickoff
+        result = crew.kickoff()
+        assert result == "result"
+        
+        # Verify artifact was created
+        from maif import MAIFDecoder
+        decoder = MAIFDecoder(self.artifact_path)
+        decoder.load()
+        
+        is_valid, _ = decoder.verify_integrity()
+        assert is_valid
+        assert len(decoder.blocks) >= 4
+    
+    def test_instrument_auto_finalize(self):
+        """Test instrument() auto-finalizes by default."""
+        from maif.integrations.crewai import instrument
+        
+        class MockCrew:
+            name = "Auto Finalize Test"
+            agents = []
+            tasks = []
+            task_callback = None
+            step_callback = None
+            
+            def kickoff(self, *args, **kwargs):
+                return "done"
+        
+        crew = MockCrew()
+        crew = instrument(crew, self.artifact_path, auto_finalize=True)
+        crew.kickoff()
+        
+        # Check artifact is finalized (can be read)
+        from maif import MAIFDecoder
+        decoder = MAIFDecoder(self.artifact_path)
+        decoder.load()
+        is_valid, _ = decoder.verify_integrity()
+        assert is_valid
+    
+    def test_instrument_no_auto_finalize(self):
+        """Test instrument() with auto_finalize=False."""
+        from maif.integrations.crewai import instrument
+        
+        class MockCrew:
+            name = "Manual Finalize Test"
+            agents = []
+            tasks = []
+            task_callback = None
+            step_callback = None
+            
+            def kickoff(self, *args, **kwargs):
+                return "done"
+        
+        crew = MockCrew()
+        crew = instrument(crew, self.artifact_path, auto_finalize=False)
+        crew.kickoff()
+        
+        # Manually finalize
+        crew._maif_callback.finalize()
+        
+        # Check artifact
+        from maif import MAIFDecoder
+        decoder = MAIFDecoder(self.artifact_path)
+        decoder.load()
+        is_valid, _ = decoder.verify_integrity()
+        assert is_valid
+    
+    def test_instrument_with_error(self):
+        """Test instrument() handles errors in kickoff."""
+        from maif.integrations.crewai import instrument
+        
+        class MockCrew:
+            name = "Error Test"
+            agents = []
+            tasks = []
+            task_callback = None
+            step_callback = None
+            
+            def kickoff(self, *args, **kwargs):
+                raise ValueError("Simulated crew error")
+        
+        crew = MockCrew()
+        crew = instrument(crew, self.artifact_path)
+        
+        # Kickoff should raise but artifact should still be created
+        with pytest.raises(ValueError):
+            crew.kickoff()
+        
+        # Artifact should exist with error logged
+        from maif import MAIFDecoder
+        decoder = MAIFDecoder(self.artifact_path)
+        decoder.load()
+        is_valid, _ = decoder.verify_integrity()
+        assert is_valid
+
+
 class TestMAIFCrewPatternsUnit:
     """Unit tests for CrewAI pattern utilities."""
     
