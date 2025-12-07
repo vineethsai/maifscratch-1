@@ -282,3 +282,140 @@ function formatAction(action: string): string {
     return map[action] || action;
 }
 
+// Session interface
+interface MAIFSession {
+    id: string;
+    startTime: number;
+    endTime: number;
+    blockCount: number;
+    type: string;
+}
+
+// Session tree item
+class SessionItem extends vscode.TreeItem {
+    constructor(
+        public readonly session: MAIFSession,
+        public readonly index: number
+    ) {
+        super(session.id, vscode.TreeItemCollapsibleState.None);
+        
+        this.description = `${session.blockCount} blocks`;
+        this.tooltip = new vscode.MarkdownString([
+            `**Session: ${session.id}**`,
+            '',
+            `- **Blocks:** ${session.blockCount}`,
+            `- **Start:** ${MAIFParser.formatTimestamp(session.startTime)}`,
+            `- **End:** ${MAIFParser.formatTimestamp(session.endTime)}`,
+            `- **Type:** ${session.type}`
+        ].join('\n'));
+        
+        this.iconPath = new vscode.ThemeIcon('symbol-event');
+    }
+}
+
+// Sessions Tree Provider
+export class MAIFSessionsProvider implements vscode.TreeDataProvider<SessionItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<SessionItem | undefined | null | void> = new vscode.EventEmitter<SessionItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<SessionItem | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    private sessions: MAIFSession[] = [];
+
+    setSessions(sessions: MAIFSession[]): void {
+        this.sessions = sessions;
+        this._onDidChangeTreeData.fire();
+    }
+
+    refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    getTreeItem(element: SessionItem): vscode.TreeItem {
+        return element;
+    }
+
+    getChildren(element?: SessionItem): Thenable<SessionItem[]> {
+        if (element) {
+            return Promise.resolve([]);
+        }
+
+        if (this.sessions.length === 0) {
+            return Promise.resolve([]);
+        }
+
+        return Promise.resolve(
+            this.sessions.map((session, index) => new SessionItem(session, index))
+        );
+    }
+}
+
+// Integrity check interface
+interface IntegrityCheck {
+    name: string;
+    passed: boolean;
+    details: string;
+}
+
+interface IntegrityResult {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    checks: IntegrityCheck[];
+}
+
+// Integrity tree item
+class IntegrityItem extends vscode.TreeItem {
+    constructor(
+        public readonly check: IntegrityCheck,
+        public readonly index: number
+    ) {
+        super(check.name, vscode.TreeItemCollapsibleState.None);
+        
+        this.description = check.passed ? 'Passed' : 'Failed';
+        this.tooltip = new vscode.MarkdownString([
+            `**${check.name}**`,
+            '',
+            `- **Status:** ${check.passed ? 'Passed' : 'Failed'}`,
+            `- **Details:** ${check.details}`
+        ].join('\n'));
+        
+        this.iconPath = check.passed 
+            ? new vscode.ThemeIcon('pass', new vscode.ThemeColor('charts.green'))
+            : new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+    }
+}
+
+// Integrity Tree Provider
+export class MAIFIntegrityProvider implements vscode.TreeDataProvider<IntegrityItem> {
+    private _onDidChangeTreeData: vscode.EventEmitter<IntegrityItem | undefined | null | void> = new vscode.EventEmitter<IntegrityItem | undefined | null | void>();
+    readonly onDidChangeTreeData: vscode.Event<IntegrityItem | undefined | null | void> = this._onDidChangeTreeData.event;
+
+    private result: IntegrityResult | null = null;
+
+    setIntegrity(result: IntegrityResult): void {
+        this.result = result;
+        this._onDidChangeTreeData.fire();
+    }
+
+    refresh(): void {
+        this._onDidChangeTreeData.fire();
+    }
+
+    getTreeItem(element: IntegrityItem): vscode.TreeItem {
+        return element;
+    }
+
+    getChildren(element?: IntegrityItem): Thenable<IntegrityItem[]> {
+        if (element) {
+            return Promise.resolve([]);
+        }
+
+        if (!this.result) {
+            return Promise.resolve([]);
+        }
+
+        return Promise.resolve(
+            this.result.checks.map((check, index) => new IntegrityItem(check, index))
+        );
+    }
+}
+

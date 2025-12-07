@@ -789,6 +789,101 @@ class TestMAIFCrewAIIntegration:
         
         is_valid, errors = decoder.verify_integrity()
         assert is_valid, f"Integrity check failed: {errors}"
+    
+    def test_real_crew_with_gemini(self, gemini_api_key):
+        """Test with a real CrewAI crew using Gemini LLM.
+        
+        This test requires GEMINI_API_KEY environment variable.
+        It runs a simple crew and verifies MAIF provenance is captured.
+        """
+        try:
+            from crewai import Agent, Task, Crew, LLM
+        except ImportError:
+            pytest.skip("CrewAI not installed")
+        
+        from maif.integrations.crewai import MAIFCrewCallback
+        
+        # Set API key in environment for CrewAI's native handling
+        os.environ["GEMINI_API_KEY"] = gemini_api_key
+        os.environ["GOOGLE_API_KEY"] = gemini_api_key
+        
+        # Create Gemini LLM using CrewAI's native format
+        try:
+            llm = LLM(
+                model="gemini/gemini-2.0-flash",
+                api_key=gemini_api_key,
+                temperature=0.1,
+            )
+        except Exception as e:
+            pytest.skip(f"Failed to create Gemini LLM: {e}")
+        
+        # Create a simple agent
+        analyst = Agent(
+            role="Calculator",
+            goal="Answer simple math questions accurately",
+            backstory="You are a calculator that gives brief, accurate answers.",
+            llm=llm,
+            verbose=False,
+            allow_delegation=False,
+        )
+        
+        # Create a simple task
+        analysis_task = Task(
+            description="What is 2+2? Answer with just the number.",
+            expected_output="The number 4",
+            agent=analyst,
+        )
+        
+        # Create MAIF callback
+        callback = MAIFCrewCallback(self.artifact_path)
+        
+        # Create and run the crew
+        crew = Crew(
+            agents=[analyst],
+            tasks=[analysis_task],
+            task_callback=callback.on_task_complete,
+            step_callback=callback.on_step,
+            verbose=False,
+        )
+        
+        # Log crew start
+        callback.on_crew_start(crew_name="Gemini Test Crew", agents=[analyst], tasks=[analysis_task])
+        
+        try:
+            # Run the crew
+            result = crew.kickoff()
+            
+            # Log crew end
+            callback.on_crew_end(result=result)
+        except Exception as e:
+            # Log error but still verify we captured some events
+            callback.on_crew_end(error=e)
+            pytest.skip(f"Gemini API error (may be quota/access issue): {e}")
+        finally:
+            callback.finalize()
+        
+        # Verify artifact was created and is valid
+        from maif import MAIFDecoder
+        decoder = MAIFDecoder(self.artifact_path)
+        decoder.load()
+        
+        is_valid, errors = decoder.verify_integrity()
+        assert is_valid, f"Integrity check failed: {errors}"
+        
+        # Verify we captured events
+        assert len(decoder.blocks) >= 4, "Expected at least 4 blocks (session_start, agent_start, task_end, session_end)"
+        
+        # Verify event types
+        event_types = set()
+        for block in decoder.blocks:
+            if block.metadata:
+                event_types.add(block.metadata.get("type", ""))
+        
+        assert "task_end" in event_types, "Expected task_end event"
+        
+        # Verify statistics were captured
+        stats = callback.get_statistics()
+        assert stats["tasks_completed"] >= 1, "Expected at least 1 task completed"
 
 
 class TestMAIFCrewPatternsUnit:
@@ -883,12 +978,19 @@ class TestMAIFCrewPatternsUnit:
             create_qa_crew,
             create_code_review_crew,
             MAIFCrew,
+            instrument,
         )
         
         assert callable(create_research_crew)
         assert callable(create_qa_crew)
         assert callable(create_code_review_crew)
+        assert callable(instrument)
         assert MAIFCrew is not None
+    
+    def test_instrument_import(self):
+        """Test that instrument can be imported from main module."""
+        from maif.integrations.crewai import instrument
+        assert callable(instrument)
 
 
 class TestMAIFCrewCLI:

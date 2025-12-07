@@ -67,6 +67,12 @@ def main():
     memory_parser.add_argument("--agent", "-a", help="Filter by agent")
     memory_parser.add_argument("--search", "-s", help="Search memories")
     
+    # Report command
+    report_parser = subparsers.add_parser("report", help="Generate HTML audit report")
+    report_parser.add_argument("artifact", help="Path to MAIF artifact")
+    report_parser.add_argument("--output", "-o", help="Output file (default: artifact_report.html)")
+    report_parser.add_argument("--open", action="store_true", help="Open in browser after generation")
+    
     args = parser.parse_args()
     
     if args.command is None:
@@ -77,6 +83,8 @@ def main():
         cmd_inspect(args)
     elif args.command == "verify":
         cmd_verify(args)
+    elif args.command == "report":
+        cmd_report(args)
     elif args.command == "export":
         cmd_export(args)
     elif args.command == "tasks":
@@ -542,6 +550,295 @@ def cmd_memory(args):
     
     print("-" * 70)
     print(f"Total: {len(memories)} memories")
+
+
+def cmd_report(args):
+    """Generate an HTML audit report."""
+    from maif import MAIFDecoder
+    import webbrowser
+    
+    artifact_path = Path(args.artifact)
+    if not artifact_path.exists():
+        print(f"Error: Artifact not found: {artifact_path}", file=sys.stderr)
+        sys.exit(1)
+    
+    decoder = MAIFDecoder(str(artifact_path))
+    decoder.load()
+    
+    # Default output path
+    output_path = args.output or f"{artifact_path.stem}_report.html"
+    
+    # Verify integrity
+    is_valid, errors = decoder.verify_integrity()
+    
+    # Collect data
+    tasks = []
+    steps = []
+    event_counts = {}
+    
+    for block in decoder.blocks:
+        meta = block.metadata or {}
+        event_type = meta.get("type", "unknown")
+        event_counts[event_type] = event_counts.get(event_type, 0) + 1
+        
+        try:
+            data = block.data
+            if isinstance(data, bytes):
+                data = data.decode("utf-8")
+            parsed = json.loads(data)
+        except:
+            parsed = {}
+        
+        if event_type == "task_end":
+            task_data = parsed.get("data", {})
+            tasks.append({
+                "description": task_data.get("task_description", "Unknown")[:80],
+                "agent": task_data.get("agent", "unknown"),
+                "timestamp": meta.get("timestamp", 0),
+            })
+        
+        elif event_type == "agent_action":
+            step_data = parsed.get("data", {})
+            steps.append({
+                "action": step_data.get("action", "unknown"),
+                "thought": step_data.get("thought", "")[:100],
+                "timestamp": meta.get("timestamp", 0),
+            })
+    
+    # Generate HTML
+    html = _generate_html_report(
+        artifact_name=artifact_path.name,
+        is_valid=is_valid,
+        errors=errors,
+        total_blocks=len(decoder.blocks),
+        event_counts=event_counts,
+        tasks=tasks,
+        steps=steps,
+    )
+    
+    # Write report
+    with open(output_path, "w") as f:
+        f.write(html)
+    
+    print(f"Report generated: {output_path}")
+    
+    # Open in browser if requested
+    if args.open:
+        webbrowser.open(f"file://{Path(output_path).absolute()}")
+
+
+def _generate_html_report(
+    artifact_name: str,
+    is_valid: bool,
+    errors: list,
+    total_blocks: int,
+    event_counts: dict,
+    tasks: list,
+    steps: list,
+) -> str:
+    """Generate HTML report content."""
+    
+    status_color = "#22c55e" if is_valid else "#ef4444"
+    status_text = "VERIFIED" if is_valid else "FAILED"
+    
+    # Build event rows
+    event_rows = ""
+    for event_type, count in sorted(event_counts.items()):
+        event_rows += f"<tr><td>{event_type}</td><td>{count}</td></tr>\n"
+    
+    # Build task rows
+    task_rows = ""
+    for i, task in enumerate(tasks, 1):
+        ts = datetime.fromtimestamp(task["timestamp"]).strftime("%H:%M:%S") if task["timestamp"] else "-"
+        task_rows += f"""<tr>
+            <td>{i}</td>
+            <td>{task['agent']}</td>
+            <td>{task['description']}...</td>
+            <td>{ts}</td>
+        </tr>\n"""
+    
+    # Build step rows (limit to 50)
+    step_rows = ""
+    for i, step in enumerate(steps[:50], 1):
+        ts = datetime.fromtimestamp(step["timestamp"]).strftime("%H:%M:%S") if step["timestamp"] else "-"
+        step_rows += f"""<tr>
+            <td>{i}</td>
+            <td><code>{step['action']}</code></td>
+            <td>{step['thought']}...</td>
+            <td>{ts}</td>
+        </tr>\n"""
+    
+    if len(steps) > 50:
+        step_rows += f"<tr><td colspan='4'><em>... and {len(steps) - 50} more steps</em></td></tr>"
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAIF Audit Report - {artifact_name}</title>
+    <style>
+        :root {{
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --border: #334155;
+            --accent: #3b82f6;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }}
+        .container {{ max-width: 1200px; margin: 0 auto; }}
+        h1 {{ 
+            font-size: 1.5rem; 
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }}
+        h2 {{ 
+            font-size: 1.1rem; 
+            margin: 1.5rem 0 0.75rem;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }}
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }}
+        .status {{
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            background: {status_color}20;
+            color: {status_color};
+            border: 1px solid {status_color};
+        }}
+        .cards {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }}
+        .card {{
+            background: var(--card);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }}
+        .card-label {{ color: var(--muted); font-size: 0.8rem; }}
+        .card-value {{ font-size: 1.5rem; font-weight: bold; }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }}
+        th, td {{
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }}
+        th {{
+            background: var(--card);
+            color: var(--muted);
+            font-weight: 500;
+        }}
+        tr:hover {{ background: var(--card); }}
+        code {{
+            background: var(--card);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.85em;
+        }}
+        .footer {{
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>MAIF Audit Report</h1>
+                <span style="color: var(--muted);">{artifact_name}</span>
+            </div>
+            <div class="status">{status_text}</div>
+        </div>
+        
+        <div class="cards">
+            <div class="card">
+                <div class="card-label">Total Events</div>
+                <div class="card-value">{total_blocks}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Tasks Completed</div>
+                <div class="card-value">{len(tasks)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Agent Steps</div>
+                <div class="card-value">{len(steps)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Integrity</div>
+                <div class="card-value" style="color: {status_color};">{'Pass' if is_valid else 'Fail'}</div>
+            </div>
+        </div>
+        
+        <h2>Event Summary</h2>
+        <table>
+            <thead>
+                <tr><th>Event Type</th><th>Count</th></tr>
+            </thead>
+            <tbody>
+                {event_rows}
+            </tbody>
+        </table>
+        
+        <h2>Tasks Completed ({len(tasks)})</h2>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Agent</th><th>Description</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+                {task_rows if task_rows else '<tr><td colspan="4">No tasks recorded</td></tr>'}
+            </tbody>
+        </table>
+        
+        <h2>Agent Reasoning Steps ({len(steps)})</h2>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Action</th><th>Thought</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+                {step_rows if step_rows else '<tr><td colspan="4">No steps recorded</td></tr>'}
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            Generated by MAIF CrewAI Integration | {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return html
 
 
 if __name__ == "__main__":

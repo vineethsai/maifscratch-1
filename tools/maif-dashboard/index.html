@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAIF Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="dark">
+    <header>
+        <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="currentColor" opacity="0.1"/>
+                <path d="M8 16L16 8L24 16L16 24L8 16Z" stroke="currentColor" stroke-width="2"/>
+                <circle cx="16" cy="16" r="4" fill="currentColor"/>
+            </svg>
+            <h1>MAIF Dashboard</h1>
+        </div>
+        <nav>
+            <button class="nav-btn active" data-view="overview">Overview</button>
+            <button class="nav-btn" data-view="artifacts">Artifacts</button>
+            <button class="nav-btn" data-view="sessions">Sessions</button>
+            <button class="nav-btn" data-view="integrations">Integrations</button>
+            <button class="nav-btn" data-view="compliance">Compliance</button>
+        </nav>
+        <div class="header-actions">
+            <button id="openFileBtn" class="btn btn-primary">Open Artifact</button>
+            <button id="themeToggle" class="btn btn-icon" title="Toggle Theme">
+                <span class="sun-icon">&#x2600;</span>
+                <span class="moon-icon">&#x263D;</span>
+            </button>
+        </div>
+        <input type="file" id="fileInput" accept=".maif" multiple style="display: none">
+    </header>
+
+    <main>
+        <!-- Overview View -->
+        <section id="overview-view" class="view active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">&#x1F4C1;</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalArtifacts">0</div>
+                        <div class="stat-label">Artifacts Loaded</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">&#x1F4E6;</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalBlocks">0</div>
+                        <div class="stat-label">Total Blocks</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">&#x1F511;</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="signedBlocks">0</div>
+                        <div class="stat-label">Signed Blocks</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">&#x2705;</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="integrityStatus">--</div>
+                        <div class="stat-label">Integrity Status</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Activity</h3>
+                    </div>
+                    <div class="card-content" id="recentActivity">
+                        <div class="empty-state">
+                            <p>No artifacts loaded</p>
+                            <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                                Open Artifact
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Block Distribution</h3>
+                    </div>
+                    <div class="card-content" id="blockDistribution">
+                        <div class="distribution-chart">
+                            <!-- Chart will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>Provenance Timeline</h3>
+                    </div>
+                    <div class="card-content" id="provenanceTimeline">
+                        <div class="timeline">
+                            <!-- Timeline will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Artifacts View -->
+        <section id="artifacts-view" class="view">
+            <div class="view-header">
+                <h2>Loaded Artifacts</h2>
+                <div class="view-actions">
+                    <input type="text" id="artifactSearch" placeholder="Search artifacts..." class="search-input">
+                    <button id="compareBtn" class="btn btn-secondary" disabled>Compare Selected</button>
+                </div>
+            </div>
+            <div class="artifacts-table" id="artifactsTable">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>Name</th>
+                            <th>Size</th>
+                            <th>Blocks</th>
+                            <th>Signed</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="artifactsBody">
+                        <!-- Artifacts will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Sessions View -->
+        <section id="sessions-view" class="view">
+            <div class="view-header">
+                <h2>Sessions</h2>
+            </div>
+            <div class="sessions-grid" id="sessionsGrid">
+                <!-- Sessions will be rendered here -->
+            </div>
+        </section>
+
+        <!-- Integrations View -->
+        <section id="integrations-view" class="view">
+            <div class="view-header">
+                <h2>Framework Integrations</h2>
+            </div>
+            <div class="integrations-grid">
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon langgraph">LG</div>
+                        <div class="integration-info">
+                            <h3>LangGraph</h3>
+                            <span class="status-badge status-available">Available</span>
+                        </div>
+                    </div>
+                    <p>Checkpointer for persistent state with cryptographic provenance.</p>
+                    <div class="integration-stats">
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="langgraphSessions">0</span>
+                            <span class="int-stat-label">Sessions</span>
+                        </div>
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="langgraphCheckpoints">0</span>
+                            <span class="int-stat-label">Checkpoints</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon langchain">LC</div>
+                        <div class="integration-info">
+                            <h3>LangChain</h3>
+                            <span class="status-badge status-available">Available</span>
+                        </div>
+                    </div>
+                    <p>Callbacks, VectorStore, and ChatMessageHistory with provenance.</p>
+                    <div class="integration-stats">
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="langchainCalls">0</span>
+                            <span class="int-stat-label">LLM Calls</span>
+                        </div>
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="langchainVectors">0</span>
+                            <span class="int-stat-label">Vectors</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon crewai">CA</div>
+                        <div class="integration-info">
+                            <h3>CrewAI</h3>
+                            <span class="status-badge status-available">Available</span>
+                        </div>
+                    </div>
+                    <p>Crew and Agent callbacks with task tracking.</p>
+                    <div class="integration-stats">
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="crewaiCrews">0</span>
+                            <span class="int-stat-label">Crews</span>
+                        </div>
+                        <div class="int-stat">
+                            <span class="int-stat-value" id="crewaiTasks">0</span>
+                            <span class="int-stat-label">Tasks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="integration-card">
+                    <div class="integration-header">
+                        <div class="integration-icon strands">ST</div>
+                        <div class="integration-info">
+                            <h3>Strands SDK</h3>
+                            <span class="status-badge status-coming">Coming Soon</span>
+                        </div>
+                    </div>
+                    <p>AWS Strands agent callbacks and memory provider.</p>
+                    <div class="integration-stats">
+                        <div class="int-stat">
+                            <span class="int-stat-value">--</span>
+                            <span class="int-stat-label">Agents</span>
+                        </div>
+                        <div class="int-stat">
+                            <span class="int-stat-value">--</span>
+                            <span class="int-stat-label">Tools</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Compliance View -->
+        <section id="compliance-view" class="view">
+            <div class="view-header">
+                <h2>Compliance & Audit</h2>
+                <button id="generateReportBtn" class="btn btn-primary">Generate Report</button>
+            </div>
+            
+            <div class="compliance-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Integrity Checks</h3>
+                    </div>
+                    <div class="card-content" id="integrityChecks">
+                        <div class="check-list">
+                            <!-- Checks will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Security Summary</h3>
+                    </div>
+                    <div class="card-content" id="securitySummary">
+                        <div class="security-stats">
+                            <div class="security-item">
+                                <span class="security-label">Signature Algorithm</span>
+                                <span class="security-value">Ed25519</span>
+                            </div>
+                            <div class="security-item">
+                                <span class="security-label">Hash Algorithm</span>
+                                <span class="security-value">SHA-256</span>
+                            </div>
+                            <div class="security-item">
+                                <span class="security-label">Block Chain</span>
+                                <span class="security-value" id="chainStatus">--</span>
+                            </div>
+                            <div class="security-item">
+                                <span class="security-label">Merkle Root</span>
+                                <span class="security-value" id="merkleStatus">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>Audit Log</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="audit-log" id="auditLog">
+                            <!-- Audit entries will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Artifact Detail Modal -->
+    <div id="artifactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Artifact Details</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="../maif-explorer/maif-parser.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
+

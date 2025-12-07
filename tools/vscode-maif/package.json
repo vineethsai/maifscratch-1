@@ -48,6 +48,31 @@
       {
         "command": "maif.showHexView",
         "title": "MAIF: Show Hex View"
+      },
+      {
+        "command": "maif.verifyIntegrity",
+        "title": "MAIF: Verify Integrity",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "maif.exportToJson",
+        "title": "MAIF: Export to JSON"
+      },
+      {
+        "command": "maif.showTimeline",
+        "title": "MAIF: Show Session Timeline"
+      },
+      {
+        "command": "maif.compareCheckpoints",
+        "title": "MAIF: Compare Checkpoints"
+      },
+      {
+        "command": "maif.searchBlocks",
+        "title": "MAIF: Search Blocks"
+      },
+      {
+        "command": "maif.generateReport",
+        "title": "MAIF: Generate Audit Report"
       }
     ],
     "customEditors": [
@@ -115,6 +140,14 @@
         {
           "id": "maifProvenance",
           "name": "Provenance"
+        },
+        {
+          "id": "maifSessions",
+          "name": "Sessions"
+        },
+        {
+          "id": "maifIntegrity",
+          "name": "Integrity"
         }
       ]
     },

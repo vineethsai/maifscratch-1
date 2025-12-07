@@ -54,9 +54,10 @@ from maif.integrations.crewai.callback import (
     MAIFStepCallback,
 )
 
-# Import patterns and context manager
+# Import patterns, context manager, and instrumentation
 from maif.integrations.crewai.patterns import (
     MAIFCrew,
+    instrument,
     create_research_crew,
     create_qa_crew,
     create_code_review_crew,
@@ -79,6 +80,8 @@ __all__ = [
     "MAIFStepCallback",
     # Context manager
     "MAIFCrew",
+    # One-liner instrumentation
+    "instrument",
     # Pre-built patterns
     "create_research_crew",
     "create_qa_crew",

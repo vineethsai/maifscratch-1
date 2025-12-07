@@ -5,6 +5,7 @@ These patterns provide ready-to-use crew configurations for common
 use cases, all with built-in cryptographic provenance tracking.
 
 Usage:
+    # Pre-built patterns
     from maif.integrations.crewai.patterns import create_research_crew
     
     crew = create_research_crew(
@@ -13,10 +14,18 @@ Usage:
         llm=my_llm,
     )
     result = crew.kickoff()
+    
+    # Instrument existing crews (one-liner!)
+    from maif.integrations.crewai import instrument
+    
+    crew = Crew(agents=[...], tasks=[...])
+    crew = instrument(crew, "audit.maif")
+    result = crew.kickoff()
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from pathlib import Path
+import functools
 
 from .callback import MAIFCrewCallback
 
@@ -26,6 +35,107 @@ try:
     CREWAI_AVAILABLE = True
 except ImportError:
     CREWAI_AVAILABLE = False
+
+
+# =============================================================================
+# One-liner Instrumentation
+# =============================================================================
+
+def instrument(
+    crew: "Crew",
+    artifact_path: Union[str, Path],
+    *,
+    agent_id: str = "crewai",
+    auto_finalize: bool = True,
+) -> "Crew":
+    """Instrument an existing CrewAI crew with MAIF provenance tracking.
+    
+    This is the simplest way to add MAIF to an existing crew. Just wrap
+    your crew with this function and all actions will be tracked.
+    
+    Args:
+        crew: An existing CrewAI Crew instance
+        artifact_path: Path for the MAIF artifact
+        agent_id: Agent identifier for provenance
+        auto_finalize: If True, automatically finalize after kickoff
+        
+    Returns:
+        The same crew, instrumented with MAIF callbacks
+        
+    Example:
+        from crewai import Crew, Agent, Task
+        from maif.integrations.crewai import instrument
+        
+        # Create your crew as normal
+        crew = Crew(agents=[agent1, agent2], tasks=[task1, task2])
+        
+        # Add MAIF tracking with one line
+        crew = instrument(crew, "audit.maif")
+        
+        # Use normally - all actions are tracked
+        result = crew.kickoff()
+        
+        # That's it! Artifact is automatically finalized.
+    """
+    if not CREWAI_AVAILABLE:
+        raise ImportError(
+            "CrewAI is required for instrumentation. "
+            "Install with: pip install crewai"
+        )
+    
+    # Create callback
+    callback = MAIFCrewCallback(artifact_path, agent_id=agent_id)
+    
+    # Store original kickoff method
+    original_kickoff = crew.kickoff
+    
+    @functools.wraps(original_kickoff)
+    def instrumented_kickoff(*args, **kwargs):
+        """Wrapped kickoff that adds MAIF tracking."""
+        # Log crew start
+        callback.on_crew_start(
+            crew_name=getattr(crew, 'name', 'Instrumented Crew'),
+            agents=getattr(crew, 'agents', None),
+            tasks=getattr(crew, 'tasks', None),
+            inputs=kwargs.get('inputs'),
+        )
+        
+        try:
+            # Run the crew
+            result = original_kickoff(*args, **kwargs)
+            
+            # Log completion
+            callback.on_crew_end(result=result)
+            
+            return result
+            
+        except Exception as e:
+            # Log error
+            callback.on_crew_end(error=e)
+            raise
+            
+        finally:
+            if auto_finalize:
+                callback.finalize()
+    
+    # Replace kickoff method
+    crew.kickoff = instrumented_kickoff
+    
+    # Set callbacks on crew if it supports them
+    if hasattr(crew, '_task_callback'):
+        crew._task_callback = callback.on_task_complete
+    else:
+        crew.task_callback = callback.on_task_complete
+        
+    if hasattr(crew, '_step_callback'):
+        crew._step_callback = callback.on_step
+    else:
+        crew.step_callback = callback.on_step
+    
+    # Store callback for later access
+    crew._maif_callback = callback
+    
+    return crew
 
 
 def _require_crewai():

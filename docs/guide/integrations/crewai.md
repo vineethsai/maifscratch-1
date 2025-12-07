@@ -30,7 +30,26 @@ pip install maif crewai
 - Python 3.10+
 - CrewAI 0.30.0+
 
-## Quick Start
+## Quick Start (One-Liner)
+
+The fastest way to add MAIF to an existing crew:
+
+```python
+from crewai import Crew, Agent, Task
+from maif.integrations.crewai import instrument
+
+# Create your crew as normal
+crew = Crew(agents=[agent1, agent2], tasks=[task1, task2])
+
+# Add MAIF tracking with one line
+crew = instrument(crew, "audit.maif")
+
+# Use normally - all actions are tracked
+result = crew.kickoff()
+# Artifact is automatically finalized
+```
+
+## Quick Start (Full Control)
 
 ```python
 from crewai import Agent, Task, Crew
@@ -483,6 +502,82 @@ memory1.finalize()  # Required for persistence
 # Second session
 memory2 = MAIFCrewMemory("memory.maif")
 print(len(memory2))  # Should show 1
+```
+
+## CLI Tools
+
+MAIF provides CLI tools for inspecting and managing CrewAI artifacts:
+
+```bash
+# Inspect artifact details
+python -m maif.integrations.crewai.cli inspect crew_audit.maif
+
+# Verify artifact integrity
+python -m maif.integrations.crewai.cli verify crew_audit.maif
+
+# List completed tasks
+python -m maif.integrations.crewai.cli tasks crew_audit.maif
+
+# List agent reasoning steps
+python -m maif.integrations.crewai.cli steps crew_audit.maif
+
+# Export to JSON/CSV/Markdown
+python -m maif.integrations.crewai.cli export crew_audit.maif --format json
+
+# Generate HTML audit report
+python -m maif.integrations.crewai.cli report crew_audit.maif --open
+
+# Query stored memories
+python -m maif.integrations.crewai.cli memory crew_audit.maif --search "deadline"
+```
+
+### HTML Report
+
+Generate a visual audit report:
+
+```bash
+python -m maif.integrations.crewai.cli report session.maif -o report.html --open
+```
+
+This creates a dark-themed HTML report showing:
+- Integrity verification status
+- Event summary statistics
+- Task completion details
+- Agent reasoning steps timeline
+
+## Pre-built Patterns
+
+Ready-to-use crew configurations with MAIF tracking:
+
+```python
+from maif.integrations.crewai.patterns import (
+    create_research_crew,
+    create_qa_crew,
+    create_code_review_crew,
+)
+
+# Research crew (2 agents: researcher + writer)
+crew = create_research_crew(
+    "research.maif",
+    topic="AI security best practices",
+    llm=my_llm,
+)
+result = crew.kickoff()
+
+# QA crew (2 agents: analyst + responder)
+crew = create_qa_crew(
+    "qa.maif",
+    context="Your document text here...",
+    llm=my_llm,
+)
+
+# Code review crew (3 agents: security + quality + summarizer)
+crew = create_code_review_crew(
+    "review.maif",
+    code="def example(): pass",
+    language="python",
+    llm=my_llm,
+)
 ```
 
 ## Related
