@@ -1,0 +1,364 @@
+"""
+Compliance Report Generator.
+
+Generates audit reports from MAIF artifacts in various formats.
+"""
+
+import json
+import csv
+from datetime import datetime
+from pathlib import Path
+from typing import List, Dict, Any
+
+# Terminal formatting
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+
+
+def print_separator(char="-", width=60):
+    """Print a separator line."""
+    print(char * width)
+
+
+def wait_for_enter(message="Press Enter to continue..."):
+    """Wait for user to press Enter."""
+    input(f"\n{DIM}{message}{RESET}")
+
+
+class ReportGenerator:
+    """Generates compliance reports from MAIF artifacts."""
+    
+    def __init__(self, artifact_path: str, reports_dir: Path):
+        """Initialize the generator.
+        
+        Args:
+            artifact_path: Path to the MAIF artifact
+            reports_dir: Directory for output reports
+        """
+        self.artifact_path = artifact_path
+        self.reports_dir = Path(reports_dir)
+        self.decoder = None
+        self._load_artifact()
+    
+    def _load_artifact(self):
+        """Load the MAIF artifact."""
+        from maif import MAIFDecoder
+        
+        self.decoder = MAIFDecoder(self.artifact_path)
+        self.decoder.load()
+    
+    def run_interactive(self):
+        """Run interactive report generation menu."""
+        while True:
+            print()
+            print(f"{BOLD}REPORT GENERATOR{RESET}")
+            print(f"Artifact: {CYAN}{self.artifact_path}{RESET}")
+            print_separator()
+            print()
+            print("[1] Summary Report (Markdown)")
+            print("[2] Detailed Audit Log (JSON)")
+            print("[3] Timeline Export (CSV)")
+            print("[4] Task Summary Report")
+            print("[5] Generate All Reports")
+            print("[6] Back to Main Menu")
+            print()
+            
+            choice = input("Choice: ").strip()
+            
+            if choice == "1":
+                self.generate_markdown_summary()
+            elif choice == "2":
+                self.generate_json_audit()
+            elif choice == "3":
+                self.generate_csv_timeline()
+            elif choice == "4":
+                self.generate_task_summary()
+            elif choice == "5":
+                self.generate_all()
+            elif choice == "6":
+                return
+            else:
+                print(f"\n{RED}Invalid choice.{RESET}")
+    
+    def generate_markdown_summary(self) -> str:
+        """Generate a markdown summary report.
+        
+        Returns:
+            Path to the generated report
+        """
+        artifact_name = Path(self.artifact_path).stem
+        report_path = self.reports_dir / f"{artifact_name}_summary.md"
+        
+        # Gather statistics
+        is_valid, errors = self.decoder.verify_integrity()
+        
+        event_counts = {}
+        tasks = []
+        steps = []
+        
+        for block in self.decoder.blocks:
+            metadata = block.metadata or {}
+            event_type = metadata.get("type", "unknown")
+            event_counts[event_type] = event_counts.get(event_type, 0) + 1
+            
+            if event_type == "task_end":
+                try:
+                    data = json.loads(block.data.decode("utf-8") if isinstance(block.data, bytes) else block.data)
+                    tasks.append(data.get("data", {}))
+                except Exception:
+                    pass
+            
+            elif event_type == "agent_action":
+                steps.append(metadata)
+        
+        # Generate report
+        report = f"""# CrewAI Session Audit Report
+
+## Overview
+
+- **Artifact**: {self.artifact_path}
+- **Generated**: {datetime.now().isoformat()}
+- **Integrity**: {'VERIFIED' if is_valid else 'FAILED'}
+- **Total Events**: {len(self.decoder.blocks)}
+
+## Event Summary
+
+| Event Type | Count |
+|------------|-------|
+"""
+        for event_type, count in sorted(event_counts.items()):
+            report += f"| {event_type} | {count} |\n"
+        
+        report += f"""
+## Task Completions
+
+Total tasks completed: {len(tasks)}
+
+"""
+        for i, task in enumerate(tasks, 1):
+            desc = task.get("task_description", "Unknown")[:60]
+            agent = task.get("agent", "unknown")
+            report += f"{i}. **{desc}...** (Agent: {agent})\n"
+        
+        report += f"""
+## Agent Activity
+
+Total reasoning steps: {len(steps)}
+
+## Integrity Verification
+
+"""
+        if is_valid:
+            report += "All cryptographic checks passed. The artifact has not been tampered with.\n"
+        else:
+            report += "**WARNING**: Integrity verification failed.\n\n"
+            report += "Errors:\n"
+            for error in errors[:5]:
+                report += f"- {error}\n"
+        
+        report += f"""
+---
+*Report generated by MAIF CrewAI Integration*
+"""
+        
+        # Write report
+        with open(report_path, "w") as f:
+            f.write(report)
+        
+        print(f"\n{GREEN}Generated:{RESET} {report_path}")
+        wait_for_enter()
+        
+        return str(report_path)
+    
+    def generate_json_audit(self) -> str:
+        """Generate a detailed JSON audit log.
+        
+        Returns:
+            Path to the generated report
+        """
+        artifact_name = Path(self.artifact_path).stem
+        report_path = self.reports_dir / f"{artifact_name}_audit.json"
+        
+        is_valid, errors = self.decoder.verify_integrity()
+        
+        # Build audit log
+        audit_log = {
+            "artifact": self.artifact_path,
+            "generated": datetime.now().isoformat(),
+            "integrity_valid": is_valid,
+            "integrity_errors": errors,
+            "total_events": len(self.decoder.blocks),
+            "events": []
+        }
+        
+        for i, block in enumerate(self.decoder.blocks):
+            metadata = block.metadata or {}
+            
+            event = {
+                "index": i,
+                "type": metadata.get("type", "unknown"),
+                "timestamp": metadata.get("timestamp"),
+                "agent_id": metadata.get("agent_id"),
+            }
+            
+            # Try to parse data
+            try:
+                data = block.data
+                if isinstance(data, bytes):
+                    data = data.decode("utf-8")
+                event["data"] = json.loads(data)
+            except Exception:
+                event["data"] = None
+            
+            audit_log["events"].append(event)
+        
+        # Write report
+        with open(report_path, "w") as f:
+            json.dump(audit_log, f, indent=2, default=str)
+        
+        print(f"\n{GREEN}Generated:{RESET} {report_path}")
+        wait_for_enter()
+        
+        return str(report_path)
+    
+    def generate_csv_timeline(self) -> str:
+        """Generate a CSV timeline export.
+        
+        Returns:
+            Path to the generated report
+        """
+        artifact_name = Path(self.artifact_path).stem
+        report_path = self.reports_dir / f"{artifact_name}_timeline.csv"
+        
+        with open(report_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            
+            # Header
+            writer.writerow([
+                "Index",
+                "Timestamp",
+                "DateTime",
+                "Event Type",
+                "Subtype",
+                "Agent ID",
+            ])
+            
+            # Data
+            for i, block in enumerate(self.decoder.blocks):
+                metadata = block.metadata or {}
+                timestamp = metadata.get("timestamp", 0)
+                dt_str = datetime.fromtimestamp(timestamp).isoformat() if timestamp else ""
+                
+                writer.writerow([
+                    i,
+                    timestamp,
+                    dt_str,
+                    metadata.get("type", "unknown"),
+                    metadata.get("event_subtype", ""),
+                    metadata.get("agent_id", ""),
+                ])
+        
+        print(f"\n{GREEN}Generated:{RESET} {report_path}")
+        wait_for_enter()
+        
+        return str(report_path)
+    
+    def generate_task_summary(self) -> str:
+        """Generate a task summary report.
+        
+        Returns:
+            Path to the generated report
+        """
+        artifact_name = Path(self.artifact_path).stem
+        report_path = self.reports_dir / f"{artifact_name}_tasks.md"
+        
+        tasks = []
+        for block in self.decoder.blocks:
+            metadata = block.metadata or {}
+            if metadata.get("type") == "task_end":
+                try:
+                    data = json.loads(block.data.decode("utf-8") if isinstance(block.data, bytes) else block.data)
+                    task_data = data.get("data", {})
+                    tasks.append({
+                        "description": task_data.get("task_description", "Unknown"),
+                        "agent": task_data.get("agent", "unknown"),
+                        "output": task_data.get("output", {}),
+                        "timestamp": metadata.get("timestamp", 0),
+                    })
+                except Exception:
+                    pass
+        
+        report = f"""# Task Summary Report
+
+**Artifact**: {self.artifact_path}
+**Generated**: {datetime.now().isoformat()}
+**Total Tasks**: {len(tasks)}
+
+---
+
+"""
+        for i, task in enumerate(tasks, 1):
+            ts = datetime.fromtimestamp(task["timestamp"]).strftime("%Y-%m-%d %H:%M:%S") if task["timestamp"] else "Unknown"
+            
+            report += f"""## Task {i}
+
+- **Agent**: {task['agent']}
+- **Completed**: {ts}
+- **Description**: {task['description']}
+
+### Output
+
+"""
+            output = task["output"]
+            if isinstance(output, dict):
+                raw = output.get("raw", "")
+                if len(raw) > 500:
+                    raw = raw[:500] + "... [truncated]"
+                report += f"```\n{raw}\n```\n\n"
+            else:
+                report += f"```\n{output}\n```\n\n"
+            
+            report += "---\n\n"
+        
+        # Write report
+        with open(report_path, "w") as f:
+            f.write(report)
+        
+        print(f"\n{GREEN}Generated:{RESET} {report_path}")
+        wait_for_enter()
+        
+        return str(report_path)
+    
+    def generate_all(self):
+        """Generate all report types."""
+        print(f"\n{BOLD}Generating all reports...{RESET}")
+        print()
+        
+        reports = [
+            ("Summary (Markdown)", self.generate_markdown_summary),
+            ("Audit Log (JSON)", self.generate_json_audit),
+            ("Timeline (CSV)", self.generate_csv_timeline),
+            ("Task Summary", self.generate_task_summary),
+        ]
+        
+        # Override wait_for_enter temporarily
+        global wait_for_enter
+        original_wait = wait_for_enter
+        wait_for_enter = lambda msg="": None
+        
+        try:
+            for name, func in reports:
+                print(f"  Generating {name}...")
+                func()
+        finally:
+            wait_for_enter = original_wait
+        
+        print()
+        print(f"{GREEN}All reports generated in:{RESET} {self.reports_dir}")
+        wait_for_enter()
+
