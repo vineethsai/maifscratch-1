@@ -1,5 +1,11 @@
 # Block Structure
 
+::: danger DEPRECATED
+This page is deprecated. For the latest and most accurate documentation, please visit **[DeepWiki - MAIF File Format](https://deepwiki.com/vineethsai/maif/2.1-maif-file-format)**.
+
+DeepWiki documentation is auto-generated from the codebase and always up-to-date.
+:::
+
 Blocks are the fundamental unit of data storage in MAIF. This guide explains block types, structure, and how to work with blocks.
 
 ## Block Overview

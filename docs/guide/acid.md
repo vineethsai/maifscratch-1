@@ -1,5 +1,9 @@
 # Data Integrity Patterns
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki - Cryptographic Security](https://deepwiki.com/vineethsai/maif/2.2-cryptographic-security)**.
+:::
+
 MAIF provides data integrity through cryptographic hashing, verification, and atomic file operations. This guide covers patterns for ensuring data reliability.
 
 ## Overview

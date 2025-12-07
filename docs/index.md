@@ -13,8 +13,8 @@ hero:
       text: View on GitHub
       link: https://github.com/vineethsai/maif
     - theme: alt
-      text: API Reference
-      link: /api/
+      text: Explore on DeepWiki
+      link: https://deepwiki.com/vineethsai/maif
 
 features:
   - title: Persistent AI Memory

@@ -131,8 +131,17 @@ export default withMermaid(defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Integrations', link: '/guide/integrations/' },
-      { text: 'API Reference', link: '/api/' },
       { text: 'Examples', link: '/examples/' },
+      { 
+        text: 'API Reference', 
+        link: 'https://deepwiki.com/vineethsai/maif/3-api-reference',
+        target: '_blank'
+      },
+      { 
+        text: 'DeepWiki', 
+        link: 'https://deepwiki.com/vineethsai/maif',
+        target: '_blank'
+      },
       {
         text: 'v1.0.0',
         items: [
@@ -147,17 +156,8 @@ export default withMermaid(defineConfig({
         {
           text: 'Getting Started',
           items: [
-            { text: 'Installation', link: '/guide/installation' },
-            { text: 'Quick Start', link: '/guide/quick-start' },
-            { text: 'Getting Started', link: '/guide/getting-started' }
-          ]
-        },
-        {
-          text: 'Core Concepts',
-          items: [
-            { text: 'Overview', link: '/guide/concepts' },
-            { text: 'Architecture', link: '/guide/architecture' },
-            { text: 'Blocks & Artifacts', link: '/guide/blocks' }
+            { text: 'Quick Start', link: '/guide/getting-started' },
+            { text: 'Installation', link: '/guide/installation' }
           ]
         },
         {
@@ -172,29 +172,23 @@ export default withMermaid(defineConfig({
           ]
         },
         {
-          text: 'Features',
+          text: 'Deep Dive (DeepWiki)',
           items: [
-            { text: 'Performance', link: '/guide/performance' },
-            { text: 'Streaming', link: '/guide/streaming' },
-            { text: 'Semantic Understanding', link: '/guide/semantic' },
-            { text: 'Multi-modal Data', link: '/guide/multimodal' },
-            { text: 'ACID Transactions', link: '/guide/acid' }
+            { text: 'Core Concepts', link: 'https://deepwiki.com/vineethsai/maif/2-core-concepts' },
+            { text: 'API Reference', link: 'https://deepwiki.com/vineethsai/maif/3-api-reference' },
+            { text: 'Security Model', link: 'https://deepwiki.com/vineethsai/maif/2.2-cryptographic-security' },
+            { text: 'Development Guide', link: 'https://deepwiki.com/vineethsai/maif/6-development-guide' }
           ]
         },
         {
-          text: 'Privacy & Security',
+          text: 'Legacy Pages',
+          collapsed: true,
           items: [
-            { text: 'Privacy Framework', link: '/guide/privacy' },
-            { text: 'Security Model', link: '/guide/security-model' }
-          ]
-        },
-        {
-          text: 'Advanced Topics',
-          items: [
-            { text: 'Agent Development', link: '/guide/agent-development' },
-            { text: 'Agent Lifecycle', link: '/guide/agent-lifecycle' },
-            { text: 'Distributed Deployment', link: '/guide/distributed' },
-            { text: 'Monitoring', link: '/guide/monitoring' }
+            { text: 'Concepts (deprecated)', link: '/guide/concepts' },
+            { text: 'Architecture (deprecated)', link: '/guide/architecture' },
+            { text: 'Blocks (deprecated)', link: '/guide/blocks' },
+            { text: 'Privacy (deprecated)', link: '/guide/privacy' },
+            { text: 'Security Model (deprecated)', link: '/guide/security-model' }
           ]
         }
       ],
@@ -202,62 +196,31 @@ export default withMermaid(defineConfig({
         {
           text: 'API Reference',
           items: [
-            { text: 'Overview', link: '/api/' }
-          ]
-        },
-        {
-          text: 'Core API',
-          items: [
-            { text: 'MAIFClient', link: '/api/core/client' },
-            { text: 'Artifact', link: '/api/core/artifact' },
-            { text: 'Encoder/Decoder', link: '/api/core/encoder-decoder' }
-          ]
-        },
-        {
-          text: 'Privacy API',
-          items: [
-            { text: 'Privacy Engine', link: '/api/privacy/engine' }
-          ]
-        },
-        {
-          text: 'Security API',
-          items: [
-            { text: 'Overview', link: '/api/security/' },
-            { text: 'Access Control', link: '/api/security/access-control' },
-            { text: 'Cryptography', link: '/api/security/crypto' }
+            { text: 'Overview (redirects to DeepWiki)', link: '/api/' }
           ]
         }
       ],
       '/examples/': [
         {
-          text: 'Examples',
+          text: 'Featured Examples',
           items: [
-            { text: 'Overview', link: '/examples/' }
-          ]
-        },
-        {
-          text: 'Framework Integrations',
-          collapsed: false,
-          items: [
+            { text: 'Overview', link: '/examples/' },
             { text: 'LangGraph Multi-Agent RAG', link: '/examples/langgraph-rag' },
             { text: 'CrewAI Research Crew', link: '/examples/crewai-research' }
           ]
         },
         {
-          text: 'Getting Started',
+          text: 'Quick Start',
           items: [
-            { text: 'Hello World', link: '/examples/hello-world' },
-            { text: 'Privacy Demo', link: '/examples/privacy-demo' },
-            { text: 'Privacy Agent', link: '/examples/privacy-agent' }
+            { text: 'Hello World', link: '/examples/hello-world' }
           ]
         },
         {
-          text: 'Advanced',
+          text: 'More Examples (DeepWiki)',
           items: [
-            { text: 'Multi-Agent System', link: '/examples/multi-agent' },
-            { text: 'Streaming', link: '/examples/streaming' },
-            { text: 'Financial Agent', link: '/examples/financial-agent' },
-            { text: 'Distributed', link: '/examples/distributed' }
+            { text: 'All Examples', link: 'https://deepwiki.com/vineethsai/maif/5-examples-and-use-cases' },
+            { text: 'Multi-Agent Systems', link: 'https://deepwiki.com/vineethsai/maif/5.3-multi-agent-systems' },
+            { text: 'AWS Integration', link: 'https://deepwiki.com/vineethsai/maif/5.4-aws-integration-examples' }
           ]
         }
       ]

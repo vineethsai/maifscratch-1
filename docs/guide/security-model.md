@@ -1,5 +1,11 @@
 # Security Model
 
+::: danger DEPRECATED
+This page is deprecated. For the latest and most accurate documentation, please visit **[DeepWiki - Cryptographic Security](https://deepwiki.com/vineethsai/maif/2.2-cryptographic-security)**.
+
+DeepWiki documentation is auto-generated from the codebase and always up-to-date.
+:::
+
 MAIF implements security at multiple levels: cryptographic signatures, encryption, access control, and provenance tracking. This guide explains the security features available in the current implementation.
 
 ## Security Architecture Overview

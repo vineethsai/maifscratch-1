@@ -1,5 +1,9 @@
 # Agent Development
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 This guide covers building AI agents that use MAIF for memory, state management, and provenance tracking.
 
 ## Overview

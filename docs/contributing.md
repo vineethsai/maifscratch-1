@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing to the MAIF Framework! This document provides guidelines for contributing.
 
+::: tip Development Documentation
+For detailed development documentation including package structure, testing strategies, and CI/CD pipeline, visit **[DeepWiki - Development Guide](https://deepwiki.com/vineethsai/maif/6-development-guide)**.
+:::
+
 ## Ways to Contribute
 
 ### Reporting Issues

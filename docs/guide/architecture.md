@@ -1,5 +1,11 @@
 # System Architecture
 
+::: danger DEPRECATED
+This page is deprecated. For the latest and most accurate documentation, please visit **[DeepWiki - Repository Architecture](https://deepwiki.com/vineethsai/maif#repository-architecture)**.
+
+DeepWiki documentation is auto-generated from the codebase and always up-to-date.
+:::
+
 MAIF's architecture is designed for AI applications with built-in security, privacy, and semantic understanding. This guide explains the system's design and components.
 
 ## High-Level Architecture

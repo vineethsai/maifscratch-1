@@ -1,5 +1,9 @@
 # Semantic Understanding
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki - Semantic Processing](https://deepwiki.com/vineethsai/maif/2.4-semantic-processing)**.
+:::
+
 MAIF provides semantic processing capabilities through embeddings, cross-modal attention, and knowledge graph features. This guide covers MAIF's semantic processing features.
 
 ## Overview
