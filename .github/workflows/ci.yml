@@ -58,9 +58,9 @@ jobs:
 
   test-integrations-live:
     runs-on: ubuntu-latest
-    # Only run on main branch or if API key is available
+    # Only run on main branch - requires GEMINI_API_KEY secret to be set
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true  # Don't fail the workflow if API quota exceeded
+    continue-on-error: true  # Don't fail the workflow if API quota exceeded or no key
 
     steps:
       - name: Checkout code
@@ -81,18 +81,24 @@ jobs:
           pip install -e .
 
       - name: Run live integration tests (LangGraph)
-        if: ${{ secrets.GEMINI_API_KEY != '' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          pytest tests/integrations/test_langgraph.py -v --timeout=180 -m "integration" || echo "Live tests skipped or failed (may be API quota)"
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY not set, skipping live tests"
+          else
+            pytest tests/integrations/test_langgraph.py -v --timeout=180 -m "integration" || echo "Live tests failed (may be API quota)"
+          fi
 
       - name: Run live integration tests (CrewAI)
-        if: ${{ secrets.GEMINI_API_KEY != '' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          pytest tests/integrations/test_crewai.py -v --timeout=180 -m "integration" || echo "Live tests skipped or failed (may be API quota)"
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY not set, skipping live tests"
+          else
+            pytest tests/integrations/test_crewai.py -v --timeout=180 -m "integration" || echo "Live tests failed (may be API quota)"
+          fi
 
   lint:
     runs-on: ubuntu-latest
