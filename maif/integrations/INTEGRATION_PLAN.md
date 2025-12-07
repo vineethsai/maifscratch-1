@@ -695,9 +695,9 @@ The following environment variables are used for testing:
 |----------|---------|--------------|
 | `GEMINI_API_KEY` | Google Gemini API key | Integration tests |
 
-**Current API Key** (for development/testing):
-```
-GEMINI_API_KEY=AIzaSyC-9sbSey9vxcCbS3xGi-W_fK_kcEsOvdE
+**Setup**: Set the environment variable before running tests:
+```bash
+export GEMINI_API_KEY=your_api_key_here
 ```
 
 ---
