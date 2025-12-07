@@ -1,5 +1,14 @@
 # API Reference
 
+::: tip Moved to DeepWiki
+The comprehensive API Reference has moved to **[DeepWiki](https://deepwiki.com/vineethsai/maif/3-api-reference)** for auto-generated, always up-to-date documentation.
+
+**Quick Links:**
+- [Simple API (maif_api.py)](https://deepwiki.com/vineethsai/maif/3.1-simple-api-maif_api.py)
+- [Core Encoder and Decoder](https://deepwiki.com/vineethsai/maif/3.2-core-encoder-and-decoder)
+- [CLI Tools](https://deepwiki.com/vineethsai/maif/3.3-cli-tools)
+:::
+
 MAIF provides a comprehensive API for building AI agents with built-in privacy, security, and semantic understanding. The API is designed for both simplicity and power, supporting everything from basic agent memory to advanced multi-modal processing.
 
 ## API Architecture Overview

@@ -2,6 +2,10 @@
 
 MAIF provides drop-in integrations for popular AI agent frameworks, enabling cryptographic provenance tracking with minimal code changes.
 
+::: tip DeepWiki Documentation
+For detailed architecture and implementation docs, see **[DeepWiki - Framework Integrations](https://deepwiki.com/vineethsai/maif/4-framework-integrations)**.
+:::
+
 ## Available Integrations
 
 | Framework | Status | Description |

@@ -1,5 +1,9 @@
 # Performance Optimization
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 MAIF is designed for high-performance operations. This guide covers optimization techniques for maximum throughput and efficiency.
 
 ## Performance Features

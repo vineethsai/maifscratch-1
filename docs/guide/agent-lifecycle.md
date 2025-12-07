@@ -1,5 +1,9 @@
 # Agent Lifecycle
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 MAIF provides tools for managing the lifecycle of AI agents, from creation through operation to retirement. This guide covers lifecycle management patterns.
 
 ## Overview

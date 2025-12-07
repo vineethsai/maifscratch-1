@@ -1,5 +1,9 @@
 # Monitoring & Observability
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 This guide covers monitoring MAIF applications in production, including health checks, metrics collection, and observability patterns.
 
 ## Overview

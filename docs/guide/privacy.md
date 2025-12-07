@@ -1,5 +1,11 @@
 # Privacy Framework
 
+::: danger DEPRECATED
+This page is deprecated. For the latest and most accurate documentation, please visit **[DeepWiki - Privacy and Encryption](https://deepwiki.com/vineethsai/maif/2.3-privacy-and-encryption)**.
+
+DeepWiki documentation is auto-generated from the codebase and always up-to-date.
+:::
+
 MAIF implements privacy-by-design principles with encryption, anonymization, and access control. This guide covers MAIF's privacy features and how to use them effectively.
 
 ## Privacy Overview

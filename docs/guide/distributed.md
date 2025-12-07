@@ -1,5 +1,9 @@
 # Distributed Patterns
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 This guide covers patterns for using MAIF in distributed systems, including file synchronization, multi-node architectures, and scaling strategies.
 
 ## Overview

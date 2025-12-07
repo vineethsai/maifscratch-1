@@ -12,6 +12,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
   <a href="https://github.com/vineethsai/maif/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/vineethsai/maif/ci.yml?branch=main&label=tests" alt="CI Tests"></a>
   <a href="https://vineethsai.github.io/maif/"><img src="https://img.shields.io/badge/docs-online-blue.svg" alt="Documentation"></a>
+  <a href="https://deepwiki.com/vineethsai/maif"><img src="https://img.shields.io/badge/DeepWiki-API%20Docs-blue.svg" alt="DeepWiki"></a>
   <a href="https://github.com/vineethsai/maif/releases"><img src="https://img.shields.io/github/v/release/vineethsai/maif" alt="Release"></a>
   <a href="https://github.com/vineethsai/maif/blob/main/CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg" alt="Code of Conduct"></a>
 </p>
@@ -318,9 +319,9 @@ maif/
 
 | Resource | Description |
 |----------|-------------|
-| [Online Docs](https://vineethsai.github.io/maif/) | Full documentation site |
-| [API Reference](docs/api/) | Detailed API documentation |
-| [User Guides](docs/guide/) | Step-by-step tutorials |
+| [Getting Started](https://vineethsai.github.io/maif/guide/getting-started) | Quick start guide |
+| [Framework Integrations](https://vineethsai.github.io/maif/guide/integrations/) | LangGraph, LangChain, CrewAI |
+| [DeepWiki](https://deepwiki.com/vineethsai/maif) | Auto-generated API docs and code exploration |
 | [Examples](examples/) | Working code examples |
 
 ---

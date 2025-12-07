@@ -1,5 +1,9 @@
 # Multi-modal Data
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 MAIF handles multiple data modalities - text, images, video, audio, and structured data - with unified storage and cross-modal relationships.
 
 ## Overview

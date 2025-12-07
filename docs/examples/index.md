@@ -2,6 +2,10 @@
 
 Real-world examples demonstrating MAIF capabilities.
 
+::: tip More Examples on DeepWiki
+For a comprehensive list of examples with auto-generated documentation, visit **[DeepWiki - Examples and Use Cases](https://deepwiki.com/vineethsai/maif/5-examples-and-use-cases)**.
+:::
+
 ## Featured Example
 
 ### LangGraph Multi-Agent RAG System

@@ -1,5 +1,11 @@
 # Core Concepts
 
+::: danger DEPRECATED
+This page is deprecated. For the latest and most accurate documentation, please visit **[DeepWiki - Core Concepts](https://deepwiki.com/vineethsai/maif/2-core-concepts)**.
+
+DeepWiki documentation is auto-generated from the codebase and always up-to-date.
+:::
+
 This guide introduces the fundamental concepts of MAIF and how they work together.
 
 ## What is MAIF?

@@ -1,5 +1,9 @@
 # Real-time Processing
 
+::: danger DEPRECATED
+This page is deprecated. For the latest documentation, please visit **[DeepWiki](https://deepwiki.com/vineethsai/maif)**.
+:::
+
 MAIF provides streaming capabilities for efficient processing of large files and real-time data ingestion. This guide covers streaming operations.
 
 ## Overview
