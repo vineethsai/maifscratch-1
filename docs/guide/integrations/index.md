@@ -8,7 +8,7 @@ MAIF provides drop-in integrations for popular AI agent frameworks, enabling cry
 |-----------|--------|-------------|
 | [LangGraph](./langgraph.md) | Available | State checkpointer with provenance |
 | [CrewAI](./crewai.md) | Available | Crew/Agent callbacks, Memory |
-| [LangChain](./langchain.md) | Coming Soon | Callbacks, VectorStore, Memory |
+| [LangChain](./langchain.md) | Available | Callbacks, VectorStore, Memory |
 | [Strands SDK](./strands.md) | Coming Soon | AWS Strands agent callbacks |
 
 ## Installation
@@ -48,14 +48,15 @@ result = app.invoke(state, config)
 checkpointer.finalize()
 ```
 
-### LangChain Example (Coming Soon)
+### LangChain Example
 
 ```python
-from langchain_core.language_models import BaseLLM
+from langchain_openai import ChatOpenAI
 from maif.integrations.langchain import MAIFCallbackHandler
 
 handler = MAIFCallbackHandler("session.maif")
-llm.invoke("Hello", config={"callbacks": [handler]})
+llm = ChatOpenAI(callbacks=[handler])
+response = llm.invoke("Hello!")
 handler.finalize()
 ```
 
