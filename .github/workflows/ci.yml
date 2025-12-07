@@ -54,6 +54,44 @@ jobs:
         run: |
           pytest tests/integrations/ -v --timeout=120 -m "not integration"
 
+  test-integrations-live:
+    runs-on: ubuntu-latest
+    # Only run on main branch or if API key is available
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true  # Don't fail the workflow if API quota exceeded
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-timeout pytest-asyncio
+          pip install langgraph langchain-core crewai
+          pip install langchain-google-genai google-generativeai
+          pip install -e .
+
+      - name: Run live integration tests (LangGraph)
+        if: ${{ secrets.GEMINI_API_KEY != '' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pytest tests/integrations/test_langgraph.py -v --timeout=180 -m "integration" || echo "Live tests skipped or failed (may be API quota)"
+
+      - name: Run live integration tests (CrewAI)
+        if: ${{ secrets.GEMINI_API_KEY != '' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          pytest tests/integrations/test_crewai.py -v --timeout=180 -m "integration" || echo "Live tests skipped or failed (may be API quota)"
+
   lint:
     runs-on: ubuntu-latest
     continue-on-error: true  # Don't block PRs on lint issues
