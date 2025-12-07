@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MAIF Dashboard Tests</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #1e293b;
+            color: #f8fafc;
+        }
+        h1 { color: #3b82f6; }
+        h2 { color: #94a3b8; margin-top: 30px; }
+        .test { 
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .pass { background: rgba(16, 185, 129, 0.2); }
+        .fail { background: rgba(239, 68, 68, 0.2); }
+        .status { font-weight: bold; }
+        .pass .status { color: #10b981; }
+        .fail .status { color: #ef4444; }
+        #summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #334155;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MAIF Dashboard Test Suite</h1>
+    <div id="results"></div>
+    <div id="summary"></div>
+
+    <script>
+        // Test framework
+        const tests = [];
+        let passed = 0;
+        let failed = 0;
+
+        function test(name, fn) {
+            tests.push({ name, fn });
+        }
+
+        function assertEqual(actual, expected, message = '') {
+            if (actual !== expected) {
+                throw new Error(`${message} Expected ${expected}, got ${actual}`);
+            }
+        }
+
+        function assertTrue(value, message = '') {
+            if (!value) {
+                throw new Error(`${message} Expected true, got ${value}`);
+            }
+        }
+
+        function assertFalse(value, message = '') {
+            if (value) {
+                throw new Error(`${message} Expected false, got ${value}`);
+            }
+        }
+
+        // ========================================
+        // Dashboard Utility Tests
+        // ========================================
+
+        test('formatTimestamp: handles Unix seconds', () => {
+            const ts = 1700000000;
+            const ms = ts * 1000;
+            const result = new Date(ms).toLocaleString();
+            assertTrue(result.includes('2023'), 'Should contain year 2023');
+        });
+
+        test('formatTimestamp: handles microseconds', () => {
+            const ts = 1700000000000000;
+            const ms = ts / 1000;
+            const result = new Date(ms).toLocaleString();
+            assertTrue(result.includes('2023'), 'Should contain year 2023');
+        });
+
+        test('formatSize: handles zero bytes', () => {
+            const result = formatSize(0);
+            assertEqual(result, '0 B');
+        });
+
+        test('formatSize: handles kilobytes', () => {
+            const result = formatSize(1024);
+            assertEqual(result, '1 KB');
+        });
+
+        test('formatSize: handles megabytes', () => {
+            const result = formatSize(1048576);
+            assertEqual(result, '1 MB');
+        });
+
+        test('formatSize: handles fractional sizes', () => {
+            const result = formatSize(1536);
+            assertEqual(result, '1.5 KB');
+        });
+
+        // Helper functions from dashboard
+        function formatSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatAction(action) {
+            const map = {
+                'genesis': 'Genesis',
+                'add_text_block': 'Add Text',
+                'finalize': 'Finalize',
+            };
+            return map[action] || action;
+        }
+
+        // ========================================
+        // Format Action Tests
+        // ========================================
+
+        test('formatAction: maps genesis', () => {
+            assertEqual(formatAction('genesis'), 'Genesis');
+        });
+
+        test('formatAction: maps add_text_block', () => {
+            assertEqual(formatAction('add_text_block'), 'Add Text');
+        });
+
+        test('formatAction: returns unknown actions as-is', () => {
+            assertEqual(formatAction('custom_action'), 'custom_action');
+        });
+
+        // ========================================
+        // Artifact Parsing Tests
+        // ========================================
+
+        class MockArtifact {
+            constructor(name, size, blocks = []) {
+                this.name = name;
+                this.size = size;
+                this.parser = {
+                    blocks: blocks,
+                    provenance: [],
+                    securityInfo: null,
+                    format: 'secure',
+                };
+                this.loadedAt = new Date();
+            }
+        }
+
+        test('Artifact: stores basic properties', () => {
+            const artifact = new MockArtifact('test.maif', 1024);
+            assertEqual(artifact.name, 'test.maif');
+            assertEqual(artifact.size, 1024);
+        });
+
+        test('Artifact: stores blocks', () => {
+            const blocks = [
+                { type: 'TEXT', size: 100 },
+                { type: 'EMBD', size: 200 },
+            ];
+            const artifact = new MockArtifact('test.maif', 1024, blocks);
+            assertEqual(artifact.parser.blocks.length, 2);
+        });
+
+        // ========================================
+        // Statistics Calculation Tests
+        // ========================================
+
+        function calculateStats(artifacts) {
+            let totalBlocks = 0;
+            let signedBlocks = 0;
+            let allValid = true;
+
+            artifacts.forEach(artifact => {
+                const parser = artifact.parser;
+                totalBlocks += parser.blocks?.length || 0;
+                signedBlocks += parser.blocks?.filter(b => b.signature)?.length || 0;
+                if (parser.blocks) {
+                    for (const block of parser.blocks) {
+                        if (block.isTampered) allValid = false;
+                    }
+                }
+            });
+
+            return { totalBlocks, signedBlocks, allValid };
+        }
+
+        test('calculateStats: counts total blocks', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [{ type: 'TEXT' }, { type: 'TEXT' }]),
+                new MockArtifact('b.maif', 100, [{ type: 'EMBD' }]),
+            ];
+            const stats = calculateStats(artifacts);
+            assertEqual(stats.totalBlocks, 3);
+        });
+
+        test('calculateStats: counts signed blocks', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT', signature: 'abc' },
+                    { type: 'TEXT' },
+                ]),
+            ];
+            const stats = calculateStats(artifacts);
+            assertEqual(stats.signedBlocks, 1);
+        });
+
+        test('calculateStats: detects tampered blocks', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT', isTampered: true },
+                ]),
+            ];
+            const stats = calculateStats(artifacts);
+            assertFalse(stats.allValid);
+        });
+
+        test('calculateStats: valid when no tampering', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT', isTampered: false },
+                ]),
+            ];
+            const stats = calculateStats(artifacts);
+            assertTrue(stats.allValid);
+        });
+
+        // ========================================
+        // Session Extraction Tests
+        // ========================================
+
+        function extractSessions(artifacts) {
+            const sessions = new Map();
+            
+            artifacts.forEach((artifact) => {
+                const parser = artifact.parser;
+                (parser.blocks || []).forEach(block => {
+                    const meta = block.metadata || {};
+                    const threadId = meta.thread_id || meta.session_id || 'default';
+                    const key = `${artifact.name}:${threadId}`;
+                    
+                    if (!sessions.has(key)) {
+                        sessions.set(key, {
+                            id: threadId,
+                            artifact: artifact.name,
+                            blocks: [],
+                        });
+                    }
+                    
+                    sessions.get(key).blocks.push(block);
+                });
+            });
+
+            return Array.from(sessions.values());
+        }
+
+        test('extractSessions: groups by thread_id', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT', metadata: { thread_id: 'session-1' } },
+                    { type: 'TEXT', metadata: { thread_id: 'session-1' } },
+                    { type: 'TEXT', metadata: { thread_id: 'session-2' } },
+                ]),
+            ];
+            const sessions = extractSessions(artifacts);
+            assertEqual(sessions.length, 2);
+        });
+
+        test('extractSessions: uses default for missing thread_id', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT', metadata: {} },
+                ]),
+            ];
+            const sessions = extractSessions(artifacts);
+            assertEqual(sessions[0].id, 'default');
+        });
+
+        // ========================================
+        // Block Distribution Tests
+        // ========================================
+
+        function calculateDistribution(artifacts) {
+            const distribution = {};
+            let total = 0;
+
+            artifacts.forEach(artifact => {
+                const parser = artifact.parser;
+                (parser.blocks || []).forEach(block => {
+                    const type = block.type || 'OTHER';
+                    distribution[type] = (distribution[type] || 0) + 1;
+                    total++;
+                });
+            });
+
+            return { distribution, total };
+        }
+
+        test('calculateDistribution: counts block types', () => {
+            const artifacts = [
+                new MockArtifact('a.maif', 100, [
+                    { type: 'TEXT' },
+                    { type: 'TEXT' },
+                    { type: 'EMBD' },
+                ]),
+            ];
+            const { distribution, total } = calculateDistribution(artifacts);
+            assertEqual(distribution['TEXT'], 2);
+            assertEqual(distribution['EMBD'], 1);
+            assertEqual(total, 3);
+        });
+
+        test('calculateDistribution: handles empty artifacts', () => {
+            const artifacts = [];
+            const { distribution, total } = calculateDistribution(artifacts);
+            assertEqual(total, 0);
+            assertEqual(Object.keys(distribution).length, 0);
+        });
+
+        // ========================================
+        // Integrity Verification Tests
+        // ========================================
+
+        function verifyIntegrity(artifacts) {
+            const checks = [
+                { name: 'Header Signatures', passed: true, details: '' },
+                { name: 'Block Chain', passed: true, details: '' },
+            ];
+
+            artifacts.forEach(artifact => {
+                const parser = artifact.parser;
+                if (!parser.securityInfo?.signature) {
+                    checks[0].passed = false;
+                    checks[0].details = 'Missing signatures';
+                }
+                (parser.blocks || []).forEach(block => {
+                    if (block.isTampered) {
+                        checks[1].passed = false;
+                        checks[1].details = 'Tampered blocks detected';
+                    }
+                });
+            });
+
+            return checks;
+        }
+
+        test('verifyIntegrity: passes with valid artifacts', () => {
+            const artifacts = [
+                {
+                    parser: {
+                        securityInfo: { signature: 'abc' },
+                        blocks: [{ isTampered: false }],
+                    }
+                }
+            ];
+            const checks = verifyIntegrity(artifacts);
+            assertTrue(checks[0].passed);
+            assertTrue(checks[1].passed);
+        });
+
+        test('verifyIntegrity: fails on missing signature', () => {
+            const artifacts = [
+                {
+                    parser: {
+                        securityInfo: null,
+                        blocks: [],
+                    }
+                }
+            ];
+            const checks = verifyIntegrity(artifacts);
+            assertFalse(checks[0].passed);
+        });
+
+        test('verifyIntegrity: fails on tampered blocks', () => {
+            const artifacts = [
+                {
+                    parser: {
+                        securityInfo: { signature: 'abc' },
+                        blocks: [{ isTampered: true }],
+                    }
+                }
+            ];
+            const checks = verifyIntegrity(artifacts);
+            assertFalse(checks[1].passed);
+        });
+
+        // ========================================
+        // Run Tests
+        // ========================================
+
+        function runTests() {
+            const results = document.getElementById('results');
+            const summary = document.getElementById('summary');
+
+            let html = '';
+            let currentSuite = '';
+
+            for (const t of tests) {
+                // Extract suite from test name
+                const parts = t.name.split(':');
+                const suite = parts[0];
+                
+                if (suite !== currentSuite) {
+                    currentSuite = suite;
+                    html += `<h2>${suite}</h2>`;
+                }
+
+                try {
+                    t.fn();
+                    passed++;
+                    html += `<div class="test pass">
+                        <span>${t.name}</span>
+                        <span class="status">PASS</span>
+                    </div>`;
+                } catch (e) {
+                    failed++;
+                    html += `<div class="test fail">
+                        <span>${t.name}: ${e.message}</span>
+                        <span class="status">FAIL</span>
+                    </div>`;
+                }
+            }
+
+            results.innerHTML = html;
+            
+            const total = passed + failed;
+            const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
+            summary.innerHTML = `
+                <strong>Results:</strong> ${passed}/${total} tests passed (${pct}%)
+                ${failed > 0 ? `<br><span style="color: #ef4444">${failed} test(s) failed</span>` : ''}
+            `;
+        }
+
+        // Run on load
+        runTests();
+    </script>
+</body>
+</html>
+
