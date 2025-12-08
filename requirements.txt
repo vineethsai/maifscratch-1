@@ -2,7 +2,7 @@
 numpy==2.0.2
 cryptography==46.0.3
 pydantic==2.12.5
-structlog==24.4.0
+structlog==25.5.0
 tenacity==9.1.2
 scikit-learn==1.6.1
 
