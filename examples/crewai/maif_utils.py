@@ -47,8 +47,8 @@ class SessionManager:
     def create_session(self, session_id: Optional[str] = None) -> str:
         session_id = session_id or str(uuid.uuid4())
         session_path = self.sessions_dir / f"{session_id}.maif"
-        encoder = MAIFEncoder(str(session_path), agent_id=f"session_{session_id}")
 
+        # Create new session using BlockStorage (compatible with _add_block)
         session_metadata = {
             "type": "session_init",
             "session_id": session_id,
@@ -56,12 +56,13 @@ class SessionManager:
             "version": "1.0",
         }
 
-        encoder.add_binary_block(
-            data=json.dumps(session_metadata).encode("utf-8"),
-            block_type=SecureBlockType.BINARY,
-            metadata={"type": "session_init"},
-        )
-        encoder.finalize()
+        with BlockStorage(str(session_path)) as storage:
+            storage.add_block(
+                block_type="BDAT",
+                data=json.dumps(session_metadata).encode("utf-8"),
+                metadata={"type": "session_init"},
+            )
+
         return str(session_path)
 
     def log_user_message(

@@ -32,9 +32,20 @@ class SessionManager:
         self.sessions_dir = Path(sessions_dir)
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
+    def _add_block(self, session_path: str, block_type: str, data: bytes, metadata: Dict) -> str:
+        """
+        Append a block to an existing secure-format file without clobbering.
+        BlockStorage does not load existing blocks, so we explicitly seek to EOF
+        before writing to preserve prior blocks and ensure MAIFDecoder can read all.
+        """
+        with BlockStorage(session_path) as storage:
+            if storage.file_handle:
+                storage.file_handle.seek(0, os.SEEK_END)
+            return storage.add_block(block_type=block_type, data=data, metadata=metadata)
+
     def create_session(self, session_id: Optional[str] = None) -> str:
         """
-        Create a new session artifact (secure format with Ed25519).
+        Create a new session artifact using BlockStorage (for compatibility with _add_block).
 
         Returns:
             session_artifact_path: Path to the created MAIF artifact
@@ -44,10 +55,7 @@ class SessionManager:
 
         session_path = self.sessions_dir / f"{session_id}.maif"
 
-        # Create new session using MAIFEncoder (secure format)
-        encoder = MAIFEncoder(str(session_path), agent_id=f"session_{session_id}")
-
-        # Add session initialization metadata
+        # Create new session using BlockStorage (compatible with _add_block)
         session_metadata = {
             "type": "session_init",
             "session_id": session_id,
@@ -55,14 +63,12 @@ class SessionManager:
             "version": "1.0",
         }
 
-        encoder.add_binary_block(
-            data=json.dumps(session_metadata).encode("utf-8"),
-            block_type=SecureBlockType.BINARY,
-            metadata={"type": "session_init"},
-        )
-
-        # Finalize the session artifact (self-contained with Ed25519 signatures)
-        encoder.finalize()
+        with BlockStorage(str(session_path)) as storage:
+            storage.add_block(
+                block_type="BDAT",
+                data=json.dumps(session_metadata).encode("utf-8"),
+                metadata={"type": "session_init"},
+            )
 
         return str(session_path)
 
@@ -75,22 +81,19 @@ class SessionManager:
         Returns:
             block_id: ID of the created block
         """
-        with BlockStorage(session_path) as storage:
-            msg_metadata = metadata or {}
-            msg_metadata.update(
-                {
-                    "type": "user_message",
-                    "timestamp": time.time(),
-                }
-            )
-
-            block_id = storage.add_block(
-                block_type=BlockType.TEXT_DATA.value,
-                data=question.encode("utf-8"),
-                metadata=msg_metadata,
-            )
-
-        return block_id
+        msg_metadata = metadata or {}
+        msg_metadata.update(
+            {
+                "type": "user_message",
+                "timestamp": time.time(),
+            }
+        )
+        return self._add_block(
+            session_path=session_path,
+            block_type=BlockType.TEXT_DATA.value,
+            data=question.encode("utf-8"),
+            metadata=msg_metadata,
+        )
 
     def log_retrieval_event(
         self,
@@ -111,33 +114,31 @@ class SessionManager:
         Returns:
             block_id: ID of the created block
         """
-        with BlockStorage(session_path) as storage:
-            retrieval_data = {
-                "type": "retrieval_event",
-                "query": query,
-                "num_results": len(results),
-                "results": [
-                    {
-                        "doc_id": r.get("doc_id"),
-                        "chunk_index": r.get("chunk_index"),
-                        "score": r.get("score"),
-                        "text_preview": r.get("text", "")[:100],  # First 100 chars
-                    }
-                    for r in results
-                ],
-                "timestamp": time.time(),
-            }
+        retrieval_data = {
+            "type": "retrieval_event",
+            "query": query,
+            "num_results": len(results),
+            "results": [
+                {
+                    "doc_id": r.get("doc_id"),
+                    "chunk_index": r.get("chunk_index"),
+                    "score": r.get("score"),
+                    "text_preview": r.get("text", "")[:100],  # First 100 chars
+                }
+                for r in results
+            ],
+            "timestamp": time.time(),
+        }
 
-            if metadata:
-                retrieval_data.update(metadata)
+        if metadata:
+            retrieval_data.update(metadata)
 
-            block_id = storage.add_block(
-                block_type="BDAT",  # BlockStorage uses 4-char string types
-                data=json.dumps(retrieval_data).encode("utf-8"),
-                metadata={"type": "retrieval_event"},
-            )
-
-        return block_id
+        return self._add_block(
+            session_path=session_path,
+            block_type="BDAT",
+            data=json.dumps(retrieval_data).encode("utf-8"),
+            metadata={"type": "retrieval_event"},
+        )
 
     def log_model_response(
         self,
@@ -152,23 +153,20 @@ class SessionManager:
         Returns:
             block_id: ID of the created block
         """
-        with BlockStorage(session_path) as storage:
-            response_metadata = metadata or {}
-            response_metadata.update(
-                {
-                    "type": "model_response",
-                    "model": model,
-                    "timestamp": time.time(),
-                }
-            )
-
-            block_id = storage.add_block(
-                block_type=BlockType.TEXT_DATA.value,
-                data=response.encode("utf-8"),
-                metadata=response_metadata,
-            )
-
-        return block_id
+        response_metadata = metadata or {}
+        response_metadata.update(
+            {
+                "type": "model_response",
+                "model": model,
+                "timestamp": time.time(),
+            }
+        )
+        return self._add_block(
+            session_path=session_path,
+            block_type=BlockType.TEXT_DATA.value,
+            data=response.encode("utf-8"),
+            metadata=response_metadata,
+        )
 
     def log_verification(
         self,
@@ -182,22 +180,19 @@ class SessionManager:
         Returns:
             block_id: ID of the created block
         """
-        with BlockStorage(session_path) as storage:
-            verif_metadata = metadata or {}
-            verif_metadata.update(
-                {
-                    "type": "verification",
-                    "timestamp": time.time(),
-                }
-            )
-
-            block_id = storage.add_block(
-                block_type="BDAT",  # BlockStorage uses 4-char string types
-                data=json.dumps(verification_results).encode("utf-8"),
-                metadata=verif_metadata,
-            )
-
-        return block_id
+        verif_metadata = metadata or {}
+        verif_metadata.update(
+            {
+                "type": "verification",
+                "timestamp": time.time(),
+            }
+        )
+        return self._add_block(
+            session_path=session_path,
+            block_type="BDAT",
+            data=json.dumps(verification_results).encode("utf-8"),
+            metadata=verif_metadata,
+        )
 
     def log_citations(
         self, session_path: str, citations: List[Dict], metadata: Optional[Dict] = None
@@ -208,23 +203,20 @@ class SessionManager:
         Returns:
             block_id: ID of the created block
         """
-        with BlockStorage(session_path) as storage:
-            citation_metadata = metadata or {}
-            citation_metadata.update(
-                {
-                    "type": "citations",
-                    "num_citations": len(citations),
-                    "timestamp": time.time(),
-                }
-            )
-
-            block_id = storage.add_block(
-                block_type="BDAT",  # BlockStorage uses 4-char string types
-                data=json.dumps({"citations": citations}).encode("utf-8"),
-                metadata=citation_metadata,
-            )
-
-        return block_id
+        citation_metadata = metadata or {}
+        citation_metadata.update(
+            {
+                "type": "citations",
+                "num_citations": len(citations),
+                "timestamp": time.time(),
+            }
+        )
+        return self._add_block(
+            session_path=session_path,
+            block_type="BDAT",
+            data=json.dumps({"citations": citations}).encode("utf-8"),
+            metadata=citation_metadata,
+        )
 
     def get_session_history(self, session_path: str) -> List[Dict]:
         """
